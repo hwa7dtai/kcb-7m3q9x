@@ -1,0 +1,188 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>课程表 · 前端 Demo</title>
+<link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+
+<header class="app-header">
+  <div class="header-inner">
+    <div class="brand">
+      <span class="brand-logo">课</span>
+      <span>课程表</span>
+      <span class="brand-sub" id="brandSemester">加载中…</span>
+    </div>
+
+    <nav class="nav">
+      <button class="nav-btn is-active" data-view="schedule">周课表</button>
+      <button class="nav-btn" data-view="courses">课程管理</button>
+    </nav>
+
+    <div class="header-actions">
+      <span class="demo-tag">Demo · 数据仅存于内存</span>
+      <button class="btn btn-sm" id="btnReset">重置数据</button>
+      <button class="btn btn-sm" id="btnClear">清空课程</button>
+    </div>
+  </div>
+</header>
+
+<main class="app-main">
+
+  <!-- ============ 周课表 ============ -->
+  <section class="view is-active" id="view-schedule">
+    <div class="card week-bar">
+      <div class="week-nav">
+        <button class="btn btn-sm" id="btnPrevWeek">上一周</button>
+        <div class="week-title" id="weekTitle">—</div>
+        <button class="btn btn-sm" id="btnNextWeek">下一周</button>
+        <button class="btn btn-sm btn-ghost" id="btnThisWeek">回到本周</button>
+      </div>
+      <div class="week-meta">
+        <span id="weekRange"></span>
+        <span class="badge" id="weekCount"></span>
+      </div>
+    </div>
+
+    <div class="card schedule-scroll" id="scheduleCard"></div>
+  </section>
+
+  <!-- ============ 课程管理 ============ -->
+  <section class="view" id="view-courses">
+    <div class="card list-toolbar">
+      <div class="search-box">
+        <svg class="search-icon" width="15" height="15" viewBox="0 0 16 16" fill="none"
+             xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+          <circle cx="7" cy="7" r="4.6" stroke="currentColor" stroke-width="1.5"/>
+          <path d="M10.6 10.6L14 14" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+        </svg>
+        <input id="searchInput" type="text" placeholder="搜索课程名 / 教师 / 教室" autocomplete="off">
+      </div>
+      <span class="badge" id="listCount"></span>
+      <button class="btn btn-primary" id="btnAdd">新增课程</button>
+    </div>
+
+    <div class="card" id="courseListCard"></div>
+  </section>
+
+</main>
+
+<!-- ============ 课程详情 ============ -->
+<div class="modal-backdrop" id="modalDetail">
+  <div class="modal">
+    <div class="modal-head">
+      <span class="modal-title">课程详情</span>
+      <button class="modal-close" data-close="modalDetail" aria-label="关闭">&times;</button>
+    </div>
+    <div class="modal-body" id="detailBody"></div>
+    <div class="modal-foot">
+      <button class="btn btn-danger" id="btnDetailDelete">删除课程</button>
+      <button class="btn btn-primary" id="btnDetailEdit">编辑</button>
+    </div>
+  </div>
+</div>
+
+<!-- ============ 新增 / 编辑 ============ -->
+<div class="modal-backdrop" id="modalForm">
+  <div class="modal">
+    <div class="modal-head">
+      <span class="modal-title" id="formTitle">新增课程</span>
+      <button class="modal-close" data-close="modalForm" aria-label="关闭">&times;</button>
+    </div>
+    <div class="modal-body">
+      <div class="form-grid">
+        <div class="field full">
+          <label for="fName">课程名称</label>
+          <input id="fName" type="text" placeholder="如：数据结构">
+        </div>
+        <div class="field">
+          <label for="fTeacher">任课教师</label>
+          <input id="fTeacher" type="text" placeholder="如：王振宇">
+        </div>
+        <div class="field">
+          <label for="fLocation">上课地点</label>
+          <input id="fLocation" type="text" placeholder="如：信息楼 402">
+        </div>
+        <div class="field">
+          <label for="fDay">星期</label>
+          <select id="fDay"></select>
+        </div>
+        <div class="field">
+          <label for="fCategory">课程类别</label>
+          <select id="fCategory">
+            <option value="必修">必修</option>
+            <option value="选修">选修</option>
+            <option value="实践">实践</option>
+          </select>
+        </div>
+        <div class="field">
+          <label for="fStart">开始节次</label>
+          <select id="fStart"></select>
+        </div>
+        <div class="field">
+          <label for="fEnd">结束节次</label>
+          <select id="fEnd"></select>
+        </div>
+        <div class="field">
+          <label for="fWeekFrom">起始周</label>
+          <input id="fWeekFrom" type="number" min="1" value="1">
+        </div>
+        <div class="field">
+          <label for="fWeekTo">结束周</label>
+          <input id="fWeekTo" type="number" min="1" value="16">
+        </div>
+        <div class="field">
+          <label for="fPattern">周次模式</label>
+          <select id="fPattern">
+            <option value="all">每周</option>
+            <option value="odd">单周</option>
+            <option value="even">双周</option>
+          </select>
+        </div>
+        <div class="field">
+          <label for="fCredit">学分</label>
+          <input id="fCredit" type="number" min="0" max="10" step="0.5" value="3">
+        </div>
+        <div class="field full">
+          <label>课表颜色</label>
+          <div class="color-picker" id="colorPicker"></div>
+        </div>
+        <div class="field full">
+          <label for="fNote">备注</label>
+          <textarea id="fNote" placeholder="选填，如：单周上课、需带实验指导书"></textarea>
+        </div>
+        <div class="field full">
+          <span class="field-error" id="formError"></span>
+        </div>
+      </div>
+    </div>
+    <div class="modal-foot">
+      <button class="btn" data-close="modalForm">取消</button>
+      <button class="btn btn-primary" id="btnFormSave">保存</button>
+    </div>
+  </div>
+</div>
+
+<!-- ============ 确认框 ============ -->
+<div class="modal-backdrop" id="modalConfirm">
+  <div class="modal" style="max-width:400px">
+    <div class="modal-head">
+      <span class="modal-title" id="confirmTitle">确认操作</span>
+      <button class="modal-close" data-close="modalConfirm" aria-label="关闭">&times;</button>
+    </div>
+    <div class="modal-body" id="confirmBody"></div>
+    <div class="modal-foot">
+      <button class="btn" data-close="modalConfirm">取消</button>
+      <button class="btn btn-danger" id="btnConfirmOk">确认</button>
+    </div>
+  </div>
+</div>
+
+<div class="toast-wrap" id="toastWrap"></div>
+
+<script src="js/store.js"></script>
+<script src="js/app.js"></script>
+</body>
+</html>
