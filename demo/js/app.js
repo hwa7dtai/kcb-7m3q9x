@@ -782,17 +782,44 @@
     });
   }
 
-  /* 液态玻璃：指针在课程块上移动时，把局部坐标写给 CSS 变量，
-     驱动 ::before 的镜面高光跟随手指/鼠标（桌面端增强，触屏自动忽略） */
+  /* 液态玻璃高光：
+     桌面端 pointermove 驱动；触屏端 pointerdown 点亮（.is-lit），
+     按住拖动可移动高光，抬起熄灭。坐标写入 --lg-x / --lg-y。 */
   function bindGlassSheen() {
-    document.addEventListener('pointermove', function (e) {
-      if (e.pointerType === 'touch') { return; }
+    var litBlock = null;
+
+    function moveSheen(e) {
       var el = e.target && e.target.closest ? e.target.closest('.course-block') : null;
       if (!el) { return; }
       var r = el.getBoundingClientRect();
       el.style.setProperty('--lg-x', (e.clientX - r.left) + 'px');
       el.style.setProperty('--lg-y', (e.clientY - r.top) + 'px');
+    }
+
+    document.addEventListener('pointermove', function (e) {
+      if (e.pointerType === 'touch') { return; }   /* 触屏走 pointerdown 流程 */
+      moveSheen(e);
     }, { passive: true });
+
+    document.addEventListener('pointerdown', function (e) {
+      if (e.pointerType !== 'touch') { return; }
+      var el = e.target && e.target.closest ? e.target.closest('.course-block') : null;
+      if (!el) { return; }
+      litBlock = el;
+      el.classList.add('is-lit');
+      moveSheen(e);
+    }, { passive: true });
+
+    document.addEventListener('pointermove', function (e) {
+      if (e.pointerType !== 'touch' || !litBlock) { return; }
+      moveSheen(e);
+    }, { passive: true });
+
+    function releaseLit() {
+      if (litBlock) { litBlock.classList.remove('is-lit'); litBlock = null; }
+    }
+    document.addEventListener('pointerup', releaseLit, { passive: true });
+    document.addEventListener('pointercancel', releaseLit, { passive: true });
   }
 
   /* ============================ 启动 ============================ */

@@ -2,9 +2,18 @@
 <html lang="zh-CN" data-page-node-id="MBzA24AWN7OGClkrO4cNij">
 <head data-page-node-id="ycOEQ2E4oWRMpJXfYnSjVw">
 <meta charset="UTF-8" data-page-node-id="JpofnwACUFJvSeX3qBUtmH">
-<meta name="viewport" content="width=device-width, initial-scale=1" data-page-node-id="hSjWAmcEw6HNsPbPdVKZuE">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" data-page-node-id="hSjWAmcEw6HNsPbPdVKZuE">
 <title>课程表 · 前端 Demo</title>
 <link rel="stylesheet" href="css/style.css" data-page-node-id="jecHJBmURhj2Ot9eUo0ozs">
+<!-- PWA：可安装、独立窗口运行、离线可用 -->
+<meta name="theme-color" content="#07090d" data-page-node-id="pwaThemeColor0001">
+<meta name="description" content="大学课程表查看工具 Demo：周课表 / 课程管理 / 教务系统导入（模拟）" data-page-node-id="pwaDesc0000000001">
+<meta name="mobile-web-app-capable" content="yes" data-page-node-id="pwaMobileCap0001">
+<meta name="apple-mobile-web-app-capable" content="yes" data-page-node-id="pwaAppleCap00001">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" data-page-node-id="pwaAppleBar00001">
+<meta name="apple-mobile-web-app-title" content="课程表" data-page-node-id="pwaAppleTitle001">
+<link rel="manifest" href="manifest.webmanifest" data-page-node-id="pwaManifest00001">
+<link rel="apple-touch-icon" href="icons/apple-touch-icon.png" data-page-node-id="pwaAppleIcon0001">
 </head>
 <body data-page-node-id="Otao7VV8zmwC9Tmjh6sB6T">
 
@@ -216,5 +225,13 @@
 <script src="js/store.js"></script>
 <script src="js/particles.js"></script>
 <script src="js/app.js"></script>
+<script>
+/* 注册 Service Worker（仅 http/https 下有效；file:// 直接打开时静默跳过） */
+if ('serviceWorker' in navigator && location.protocol !== 'file:') {
+  window.addEventListener('load', function () {
+    navigator.serviceWorker.register('sw.js').catch(function () { /* 预览环境不支持时忽略 */ });
+  });
+}
+</script>
 </body>
 </html>

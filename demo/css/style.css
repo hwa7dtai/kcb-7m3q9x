@@ -126,8 +126,20 @@ input, select, textarea { font-family: inherit; font-size: inherit; color: inher
   to { opacity: 1; transform: none; filter: blur(0); }
 }
 
-@keyframes trace-h { to { background-size: 100% 1.5px, 100% 1.5px; } }
-@keyframes trace-v { to { background-size: 1.5px 100%, 1.5px 100%; } }
+/* CTA 四边框顺序描边：先上下边（左→右），再左右边（上→下） */
+@keyframes trace-box {
+  0% { background-size: 0 1.5px, 0 1.5px, 1.5px 0, 1.5px 0; }
+  45% { background-size: 100% 1.5px, 100% 1.5px, 1.5px 0, 1.5px 0; }
+  55% { background-size: 100% 1.5px, 100% 1.5px, 1.5px 0, 1.5px 0; }
+  100% { background-size: 100% 1.5px, 100% 1.5px, 1.5px 100%, 1.5px 100%; }
+}
+
+/* CTA 流光：一道高光周期性扫过按钮（画在元素自身背景上，
+   天然被圆角裁切，不依赖 overflow） */
+@keyframes cta-sheen {
+  0%, 62% { background-position: -65% 0, 0 0; }
+  100% { background-position: 175% 0, 0 0; }
+}
 
 @keyframes cta-breathe {
   0%, 100% { box-shadow: 0 0 0 1px rgba(29, 223, 255, .16), 0 0 20px -6px rgba(29, 223, 255, .22); }
@@ -320,46 +332,52 @@ input, select, textarea { font-family: inherit; font-size: inherit; color: inher
 
 /* ---------- 描边绘制按钮（参考视频 CTA） ---------- */
 
+/* 「从教务系统导入」CTA：玻璃底 + 四边框顺序描边 + 周期流光 + 呼吸辉光 */
 .btn-trace {
   border-color: rgba(29, 223, 255, .3);
-  background: rgba(29, 223, 255, .07);
+  background:
+    linear-gradient(105deg,
+      transparent 35%,
+      rgba(255, 255, 255, .10) 47%,
+      rgba(255, 255, 255, .18) 52%,
+      transparent 65%) no-repeat,
+    rgba(29, 223, 255, .07);
+  background-size: 45% 100%, auto;
+  background-position: -65% 0, 0 0;
+  -webkit-backdrop-filter: blur(8px) saturate(1.4);
+  backdrop-filter: blur(8px) saturate(1.4);
   color: var(--accent);
   overflow: visible;
-  animation: cta-breathe 3.2s 1s ease-in-out infinite;
+  animation:
+    cta-sheen 4.6s 1.5s var(--ease-out) infinite,
+    cta-breathe 3.2s 1s ease-in-out infinite;
+  transition: transform .2s var(--ease-spring), border-color .2s, box-shadow .2s, filter .2s;
 }
 
-.btn-trace::before,
-.btn-trace::after {
+/* 描边绘制：上下边先走，左右边后走，带辉光 */
+.btn-trace::before {
   content: '';
   position: absolute;
   inset: -1px;
   border-radius: inherit;
   pointer-events: none;
-}
-
-/* 上下边：从左向右绘制 */
-.btn-trace::before {
   background:
     linear-gradient(var(--accent), var(--accent)) top left / 0 1.5px no-repeat,
-    linear-gradient(var(--accent), var(--accent)) bottom left / 0 1.5px no-repeat;
-  animation: trace-h .55s .15s var(--ease-out) forwards;
+    linear-gradient(var(--accent), var(--accent)) bottom left / 0 1.5px no-repeat,
+    linear-gradient(var(--accent), var(--accent)) left top / 1.5px 0 no-repeat,
+    linear-gradient(var(--accent), var(--accent)) right top / 1.5px 0 no-repeat;
   filter: drop-shadow(0 0 5px var(--accent-glow));
-}
-
-/* 左右边：从上向下绘制 */
-.btn-trace::after {
-  background:
-    linear-gradient(var(--accent), var(--accent)) top left / 1.5px 0 no-repeat,
-    linear-gradient(var(--accent), var(--accent)) bottom left / 1.5px 0 no-repeat;
-  animation: trace-v .55s .62s var(--ease-out) forwards;
-  filter: drop-shadow(0 0 5px var(--accent-glow));
+  animation: trace-box 1.05s .12s var(--ease-out) forwards;
 }
 
 .btn-trace:hover {
-  background: rgba(29, 223, 255, .13);
   border-color: rgba(29, 223, 255, .55);
   box-shadow: 0 0 28px -4px var(--accent-glow);
+  filter: brightness(1.14);
+  transform: translateY(-1px);
 }
+
+.btn-trace:active { transform: translateY(0) scale(.97); }
 
 /* 圆形图标按钮（周次切换） */
 .icon-btn {
@@ -609,39 +627,46 @@ input, select, textarea { font-family: inherit; font-size: inherit; color: inher
 .grid-cell.is-today-col { background: rgba(29, 223, 255, .045); }
 .grid-cell.is-today-col.col-weekend { background: rgba(29, 223, 255, .06); }
 
-/* ---------- 课程色块（苹果液态玻璃） ---------- */
+/* ---------- 课程色块（苹果液态玻璃 · 半透明无色） ---------- */
 
 .course-block {
   position: relative;
   margin: 3px;
   padding: 7px 9px;
   border-radius: var(--radius);
-  /* 玻璃材质：顶部受光渐变 + 课程色着色，底层格子经模糊折射 */
+  /* 无色玻璃：极淡暗底保证可读 + 顶部受光渐变；背后格子经模糊折射 */
   background:
-    linear-gradient(155deg,
-      rgba(255, 255, 255, .13) 0%,
-      rgba(255, 255, 255, .03) 36%,
-      rgba(255, 255, 255, 0) 64%),
-    var(--cb-bg);
-  -webkit-backdrop-filter: blur(10px) saturate(1.7);
-  backdrop-filter: blur(10px) saturate(1.7);
+    linear-gradient(160deg,
+      rgba(255, 255, 255, .17) 0%,
+      rgba(255, 255, 255, .06) 30%,
+      rgba(255, 255, 255, .02) 58%,
+      rgba(255, 255, 255, .07) 100%),
+    rgba(10, 14, 20, .3);
+  -webkit-backdrop-filter: blur(16px) saturate(1.5);
+  backdrop-filter: blur(16px) saturate(1.5);
   color: var(--cb-text);
   overflow: hidden;
   text-align: left;
   display: flex;
   flex-direction: column;
   gap: 2px;
-  transition: transform .24s var(--ease-spring), box-shadow .24s var(--ease-out);
+  transition: transform .24s var(--ease-spring), box-shadow .24s var(--ease-out), filter .2s;
   min-width: 0;
   animation: glass-in .55s var(--ease-spring) backwards;
   cursor: pointer;
   isolation: isolate;
+  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
+  /* 玻璃厚度：底部内阴影 + 顶部受光内线 */
+  box-shadow:
+    inset 0 -1px 2px rgba(0, 0, 0, .28),
+    inset 0 1px 0 rgba(255, 255, 255, .05);
 }
 
 /* 文字层置于高光之上 */
 .course-block > * { position: relative; z-index: 1; }
 
-/* 镜面边缘高光（液态玻璃的"描边"）：左上受光，右下渐隐为课程色 */
+/* 镜面边缘高光（液态玻璃的"描边"）：上下缘受光，侧缘渐隐 */
 .course-block::after {
   content: '';
   position: absolute;
@@ -649,10 +674,10 @@ input, select, textarea { font-family: inherit; font-size: inherit; color: inher
   border-radius: inherit;
   padding: 1px;
   background: linear-gradient(150deg,
-    rgba(255, 255, 255, .62) 0%,
-    rgba(255, 255, 255, .12) 26%,
-    rgba(255, 255, 255, 0) 58%,
-    var(--cb-line) 100%);
+    rgba(255, 255, 255, .72) 0%,
+    rgba(255, 255, 255, .16) 24%,
+    rgba(255, 255, 255, .04) 55%,
+    rgba(255, 255, 255, .26) 100%);
   -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
   -webkit-mask-composite: xor;
   mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
@@ -661,32 +686,36 @@ input, select, textarea { font-family: inherit; font-size: inherit; color: inher
   z-index: 2;
 }
 
-/* 指针跟随的液态高光（--lg-x / --lg-y 由 JS 写入） */
+/* 指针/手指跟随的液态高光（--lg-x / --lg-y 由 JS 写入） */
 .course-block::before {
   content: '';
   position: absolute;
   inset: 0;
   border-radius: inherit;
-  background: radial-gradient(110px circle at var(--lg-x, 50%) var(--lg-y, 50%),
-    rgba(255, 255, 255, .26), rgba(255, 255, 255, .05) 45%, transparent 72%);
+  background: radial-gradient(120px circle at var(--lg-x, 50%) var(--lg-y, 50%),
+    rgba(255, 255, 255, .3), rgba(255, 255, 255, .06) 45%, transparent 72%);
   opacity: 0;
   transition: opacity .3s var(--ease-out);
   pointer-events: none;
   z-index: 0;
 }
 
-.course-block:hover::before { opacity: 1; }
+/* 桌面端 hover 点亮；触屏用 .is-lit（按下即亮，可拖动） */
+.course-block:hover::before,
+.course-block.is-lit::before { opacity: 1; }
 
-.course-block:hover {
+.course-block:hover,
+.course-block.is-lit {
   transform: translateY(-3px) scale(1.015);
   box-shadow:
+    inset 0 -1px 2px rgba(0, 0, 0, .28),
+    inset 0 1px 0 rgba(255, 255, 255, .05),
     0 16px 36px -14px rgba(0, 0, 0, .66),
-    0 0 26px -8px var(--cb),
-    inset 0 1px 0 rgba(255, 255, 255, .28);
+    0 0 24px -6px rgba(255, 255, 255, .16);
   z-index: 4;
 }
 
-.course-block:active { transform: translateY(-1px) scale(.98); }
+.course-block:active { transform: translateY(-1px) scale(.98); filter: brightness(1.1); }
 
 .course-block .cb-name {
   font-weight: 600;
@@ -1257,7 +1286,67 @@ input, select, textarea { font-family: inherit; font-size: inherit; color: inher
 
   .form-grid { grid-template-columns: 1fr; }
   .modal { max-height: 94vh; }
+
+  /* 移动端玻璃降档：更小模糊半径与更轻的入场（省 GPU） */
+  .course-block {
+    -webkit-backdrop-filter: blur(10px) saturate(1.3);
+    backdrop-filter: blur(10px) saturate(1.3);
+    animation-name: rise-in;
+  }
+  .import-item {
+    -webkit-backdrop-filter: blur(6px);
+    backdrop-filter: blur(6px);
+  }
+  .btn-trace {
+    -webkit-backdrop-filter: blur(6px);
+    backdrop-filter: blur(6px);
+  }
+
+  /* 移动端课表收紧：更窄时间轴与单元格，减少横向滚动量 */
+  .schedule-grid {
+    min-width: 660px;
+    grid-template-columns: 62px repeat(7, minmax(84px, 1fr));
+    grid-auto-rows: minmax(52px, auto);
+  }
+  .grid-period .period-time { font-size: 10.5px; }
+  .grid-period .period-no { font-size: 9.5px; letter-spacing: 0; }
+  .grid-head { font-size: 12px; }
+  .grid-head .head-date { font-size: 10px; }
+  .course-block { padding: 5px 7px; }
+  .course-block .cb-name { font-size: 12px; }
+  .course-block .cb-meta { font-size: 10.5px; }
+  .course-block .cb-weeks { font-size: 9.5px; }
+
+  /* 触控目标放大（≥36px），兼顾拇指操作 */
+  .btn { padding: 9px 15px; }
+  .btn-sm { padding: 8px 13px; min-height: 36px; }
+  .icon-btn { width: 40px; height: 40px; }
+  .nav-btn { padding: 8px 14px; }
 }
+
+/* 触屏设备：统一去掉点按蓝闪，按压反馈交给 :active / .is-lit */
+@media (pointer: coarse) {
+  button, label, a { -webkit-tap-highlight-color: transparent; }
+}
+
+/* PWA 独立窗口（全面屏/刘海屏）安全区 */
+@supports (padding: max(0px)) {
+  .app-header .header-inner {
+    padding-left: max(16px, env(safe-area-inset-left));
+    padding-right: max(16px, env(safe-area-inset-right));
+  }
+  .app-main {
+    padding-left: max(20px, env(safe-area-inset-left));
+    padding-right: max(20px, env(safe-area-inset-right));
+    padding-bottom: max(48px, env(safe-area-inset-bottom));
+  }
+  .modal-foot {
+    padding-bottom: max(14px, env(safe-area-inset-bottom));
+  }
+}
+
+/* 独立窗口下禁止页面级回弹，接近原生 App 手感 */
+body { overscroll-behavior-y: contain; }
 
 /* ============================ 减弱动效 ============================ */
 

@@ -63,6 +63,27 @@ JSDOM.fromFile(FILE, {
   check('氛围粒子画布已挂载', !!$('#particleCanvas'));
   check('导航滑动指示器存在', !!$('#navIndicator'));
 
+  /* 3.8 PWA 基建（manifest / 图标 / Service Worker / 移动端 meta） */
+  const DEMO = path.join(__dirname, '..');
+  check('已链接 Web App Manifest', !!$('link[rel="manifest"]'),
+    $('link[rel="manifest"]') && $('link[rel="manifest"]').getAttribute('href'));
+  check('manifest 文件存在且为合法 JSON', (() => {
+    try {
+      const m = JSON.parse(fs.readFileSync(path.join(DEMO, 'manifest.webmanifest'), 'utf8'));
+      return !!(m.name && m.start_url && m.icons && m.icons.length >= 2 && m.display === 'standalone');
+    } catch (e) { return false; }
+  })());
+  check('PWA 图标齐全（192 / 512 / maskable / apple-touch）',
+    ['icons/icon-192.png', 'icons/icon-512.png', 'icons/icon-maskable-512.png', 'icons/apple-touch-icon.png']
+      .every(f => fs.existsSync(path.join(DEMO, f))));
+  check('Service Worker 脚本存在', fs.existsSync(path.join(DEMO, 'sw.js')));
+  check('主题色与 Apple 移动端 meta 齐全',
+    !!$('meta[name="theme-color"]') && !!$('meta[name="apple-mobile-web-app-capable"]') &&
+    !!$('link[rel="apple-touch-icon"]'));
+  check('viewport 使用 viewport-fit=cover（安全区适配）',
+    ($('meta[name="viewport"]') || {}).content && $('meta[name="viewport"]').content.indexOf('viewport-fit=cover') !== -1,
+    $('meta[name="viewport"]') && $('meta[name="viewport"]').content);
+
   /* 3. 左侧时间列（课程时间） */
   const periodTimes = $$('.grid-period .period-time');
   check('左侧时间列渲染 12 行', periodTimes.length === 12, periodTimes.length);
