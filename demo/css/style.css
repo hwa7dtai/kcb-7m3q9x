@@ -7,7 +7,7 @@
   /* 底色与层次 */
   --bg-0: #07090d;
   --bg-1: #0b0f16;
-  --surface: rgba(255, 255, 255, .035);
+  --surface: rgba(255, 255, 255, .025);
   --surface-2: rgba(255, 255, 255, .06);
   --surface-3: rgba(255, 255, 255, .09);
   --line: rgba(255, 255, 255, .08);
@@ -198,7 +198,8 @@ input, select, textarea { font-family: inherit; font-size: inherit; color: inher
   position: sticky;
   top: 0;
   z-index: 30;
-  background: rgba(9, 12, 18, .72);
+  /* 顶栏玻璃提高透明度，滚动时能看到背景照片 */
+  background: rgba(9, 12, 18, .5);
   backdrop-filter: blur(18px);
   -webkit-backdrop-filter: blur(18px);
   border-bottom: 1px solid var(--line);
@@ -448,6 +449,10 @@ input, select, textarea { font-family: inherit; font-size: inherit; color: inher
   padding: 14px 16px;
   margin-bottom: 16px;
   flex-wrap: wrap;
+  /* 周次条玻璃再降一档透明度：更淡的底色 + 更小的模糊半径，透出背景 */
+  background: rgba(255, 255, 255, .02);
+  backdrop-filter: blur(7px);
+  -webkit-backdrop-filter: blur(7px);
 }
 
 .week-nav { display: flex; align-items: center; gap: 10px; }
@@ -532,9 +537,9 @@ input, select, textarea { font-family: inherit; font-size: inherit; color: inher
   position: sticky;
   left: 0;
   z-index: 3;
-  background: rgba(7, 9, 13, .6);
-  border-right: 1px solid var(--line-strong);
-  border-bottom: 1px solid var(--line);
+  background: rgba(7, 9, 13, .42);
+  border-right: 1px solid rgba(255, 255, 255, .1);
+  border-bottom: 1px solid rgba(255, 255, 255, .07);
   display: flex;
   align-items: flex-end;
   justify-content: center;
@@ -548,10 +553,11 @@ input, select, textarea { font-family: inherit; font-size: inherit; color: inher
   position: sticky;
   top: 0;
   z-index: 2;
-  background: rgba(11, 15, 22, .92);
-  backdrop-filter: blur(8px);
-  border-bottom: 1px solid var(--line);
-  border-right: 1px solid var(--line);
+  background: rgba(11, 15, 22, .5);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  border-bottom: 1px solid rgba(255, 255, 255, .1);
+  border-right: 1px solid rgba(255, 255, 255, .06);
   padding: 9px 4px 8px;
   text-align: center;
   font-weight: 600;
@@ -591,9 +597,9 @@ input, select, textarea { font-family: inherit; font-size: inherit; color: inher
   position: sticky;
   left: 0;
   z-index: 2;
-  background: rgba(7, 9, 13, .55);
-  border-right: 1px solid var(--line-strong);
-  border-bottom: 1px solid var(--line);
+  background: rgba(7, 9, 13, .36);
+  border-right: 1px solid rgba(255, 255, 255, .12);
+  border-bottom: 1px solid rgba(255, 255, 255, .06);
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -627,18 +633,18 @@ input, select, textarea { font-family: inherit; font-size: inherit; color: inher
 }
 
 /* 上午/下午/晚间分段线（第 4、8、12 节后） */
-.grid-period.is-slot-end { border-bottom: 1px solid rgba(255, 255, 255, .14); }
+.grid-period.is-slot-end { border-bottom: 1px solid rgba(255, 255, 255, .1); }
 
 .grid-cell {
-  border-right: 1px solid rgba(255, 255, 255, .05);
-  border-bottom: 1px solid rgba(255, 255, 255, .05);
+  border-right: 1px solid rgba(255, 255, 255, .04);
+  border-bottom: 1px solid rgba(255, 255, 255, .04);
   min-height: 58px;
   transition: background .25s;
 }
 
 .grid-cell.is-row-end { border-right: none; }
 .grid-cell.col-weekend { background: rgba(255, 255, 255, .012); }
-.grid-cell.is-slot-end { border-bottom: 1px solid rgba(255, 255, 255, .14); }
+.grid-cell.is-slot-end { border-bottom: 1px solid rgba(255, 255, 255, .1); }
 .grid-cell.is-today-col { background: rgba(29, 223, 255, .045); }
 .grid-cell.is-today-col.col-weekend { background: rgba(29, 223, 255, .06); }
 
@@ -649,16 +655,17 @@ input, select, textarea { font-family: inherit; font-size: inherit; color: inher
   margin: 3px;
   padding: 7px 9px;
   border-radius: var(--radius);
-  /* 无色玻璃：极淡暗底保证可读 + 顶部受光渐变；背后格子经模糊折射 */
+  /* 无色玻璃：左上受光光池 + 顶部受光渐变 + 极淡暗底；背后格子经模糊折射 */
   background:
+    radial-gradient(140% 90% at 18% -12%, rgba(255, 255, 255, .16), transparent 52%),
     linear-gradient(160deg,
-      rgba(255, 255, 255, .17) 0%,
-      rgba(255, 255, 255, .06) 30%,
+      rgba(255, 255, 255, .15) 0%,
+      rgba(255, 255, 255, .055) 30%,
       rgba(255, 255, 255, .02) 58%,
-      rgba(255, 255, 255, .07) 100%),
-    rgba(10, 14, 20, .3);
-  -webkit-backdrop-filter: blur(16px) saturate(1.5);
-  backdrop-filter: blur(16px) saturate(1.5);
+      rgba(255, 255, 255, .06) 100%),
+    rgba(10, 14, 20, .22);
+  -webkit-backdrop-filter: blur(16px) saturate(1.6);
+  backdrop-filter: blur(16px) saturate(1.6);
   color: var(--cb-text);
   overflow: hidden;
   text-align: left;
@@ -672,10 +679,11 @@ input, select, textarea { font-family: inherit; font-size: inherit; color: inher
   isolation: isolate;
   -webkit-tap-highlight-color: transparent;
   touch-action: manipulation;
-  /* 玻璃厚度：底部内阴影 + 顶部受光内线 */
+  /* 玻璃厚度：底部内阴影 + 顶部受光内线 + 玻璃体内微光 */
   box-shadow:
-    inset 0 -1px 2px rgba(0, 0, 0, .28),
-    inset 0 1px 0 rgba(255, 255, 255, .05);
+    inset 0 -1px 2px rgba(0, 0, 0, .24),
+    inset 0 1px 0 rgba(255, 255, 255, .09),
+    inset 0 14px 20px -14px rgba(255, 255, 255, .06);
 }
 
 /* 文字层置于高光之上 */
@@ -723,8 +731,9 @@ input, select, textarea { font-family: inherit; font-size: inherit; color: inher
 .course-block.is-lit {
   transform: translateY(-3px) scale(1.015);
   box-shadow:
-    inset 0 -1px 2px rgba(0, 0, 0, .28),
-    inset 0 1px 0 rgba(255, 255, 255, .05),
+    inset 0 -1px 2px rgba(0, 0, 0, .24),
+    inset 0 1px 0 rgba(255, 255, 255, .12),
+    inset 0 14px 20px -14px rgba(255, 255, 255, .08),
     0 16px 36px -14px rgba(0, 0, 0, .66),
     0 0 24px -6px rgba(255, 255, 255, .16);
   z-index: 4;
