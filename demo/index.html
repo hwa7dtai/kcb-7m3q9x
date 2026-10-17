@@ -1,186 +1,199 @@
 <!DOCTYPE html>
-<html lang="zh-CN">
-<head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
+<html lang="zh-CN" data-page-node-id="MBzA24AWN7OGClkrO4cNij">
+<head data-page-node-id="ycOEQ2E4oWRMpJXfYnSjVw">
+<meta charset="UTF-8" data-page-node-id="JpofnwACUFJvSeX3qBUtmH">
+<meta name="viewport" content="width=device-width, initial-scale=1" data-page-node-id="hSjWAmcEw6HNsPbPdVKZuE">
 <title>课程表 · 前端 Demo</title>
-<link rel="stylesheet" href="css/style.css">
+<link rel="stylesheet" href="css/style.css" data-page-node-id="jecHJBmURhj2Ot9eUo0ozs">
 </head>
-<body>
+<body data-page-node-id="Otao7VV8zmwC9Tmjh6sB6T">
 
-<header class="app-header">
-  <div class="header-inner">
-    <div class="brand">
-      <span class="brand-logo">课</span>
-      <span>课程表</span>
-      <span class="brand-sub" id="brandSemester">加载中…</span>
+<header class="app-header" data-page-node-id="1S42ehyhGhQBmKV33MmfFp">
+  <div class="header-inner" data-page-node-id="fzm49qNbI4InfRVOYPGLSu">
+    <div class="brand" data-page-node-id="GlaxEI1vyRw5OMlrqXK1fp">
+      <span class="brand-logo" data-page-node-id="x8CP8v0GiB2Y2PzfaF3riW">课</span>
+      <span data-page-node-id="M9gDnzKee1AFPBjd8yioHw">课程表</span>
+      <span class="brand-sub" id="brandSemester" data-page-node-id="Jj16meavtObTDlN0vHJqrk">加载中…</span>
     </div>
 
-    <nav class="nav">
-      <button class="nav-btn is-active" data-view="schedule">周课表</button>
-      <button class="nav-btn" data-view="courses">课程管理</button>
+    <nav class="nav" data-page-node-id="S8WxJ5w2G7n0D846ssiGxj">
+      <button class="nav-btn is-active" data-view="schedule" data-page-node-id="3ewMV8OZwYcxDmVDUGiLKW">周课表</button>
+      <button class="nav-btn" data-view="courses" data-page-node-id="gyYowkdjGzDmaEYB9liED1">课程管理</button>
     </nav>
 
-    <div class="header-actions">
-      <span class="demo-tag">Demo · 数据仅存于内存</span>
-      <button class="btn btn-sm" id="btnReset">重置数据</button>
-      <button class="btn btn-sm" id="btnClear">清空课程</button>
+    <div class="header-actions" data-page-node-id="OqgD1xPkcXkoH3yoWLeTAU">
+      <span class="demo-tag" data-page-node-id="6zeD3NMowYNH8HFczBFWzj">Demo · 数据仅存于内存</span>
+      <button class="btn btn-sm" id="btnReset" data-page-node-id="SFpvhZFJdjqKWFfiltIaxm">重置数据</button>
+      <button class="btn btn-sm" id="btnClear" data-page-node-id="fShdYRcwKvRxG54m2vJ390">清空课程</button>
     </div>
   </div>
 </header>
 
-<main class="app-main">
+<main class="app-main" data-page-node-id="bP5RSrsxy05eCBakEXVBXo">
 
   <!-- ============ 周课表 ============ -->
-  <section class="view is-active" id="view-schedule">
-    <div class="card week-bar">
-      <div class="week-nav">
-        <button class="btn btn-sm" id="btnPrevWeek">上一周</button>
-        <div class="week-title" id="weekTitle">—</div>
-        <button class="btn btn-sm" id="btnNextWeek">下一周</button>
-        <button class="btn btn-sm btn-ghost" id="btnThisWeek">回到本周</button>
+  <section class="view is-active" id="view-schedule" data-page-node-id="BTcruy37g4JGsuVofUFDxG">
+    <div class="card week-bar" data-page-node-id="bjwFRBAk1OotAPPETp734k">
+      <div class="week-nav" data-page-node-id="Ocz3RRF1Vh1UR366EGQMLs">
+        <button class="btn btn-sm" id="btnPrevWeek" data-page-node-id="LYG9qA2bTfPqzANglAH6z4">上一周</button>
+        <div class="week-title" id="weekTitle" data-page-node-id="emlpS397lvW9AxwvNxeTrQ">—</div>
+        <button class="btn btn-sm" id="btnNextWeek" data-page-node-id="T2En5J69MY1uPX8bCZTRRM">下一周</button>
+        <button class="btn btn-sm btn-ghost" id="btnThisWeek" data-page-node-id="ssObpRFGvtLbqjFLjYhDHZ">回到本周</button>
       </div>
-      <div class="week-meta">
-        <span id="weekRange"></span>
-        <span class="badge" id="weekCount"></span>
+      <div class="week-meta" data-page-node-id="kMNVy8MRr2fktGkeSNv7HL">
+        <span id="weekRange" data-page-node-id="m4NJklyvRpLB6snEpefn3s"></span>
+        <span class="badge" id="weekCount" data-page-node-id="yrt8AtbHDWaDdjcQeJnbKQ"></span>
       </div>
     </div>
 
-    <div class="card schedule-scroll" id="scheduleCard"></div>
+    <div class="card schedule-scroll" id="scheduleCard" data-page-node-id="L5Gvxl4sfhTo38AF9mlCsV"></div>
   </section>
 
   <!-- ============ 课程管理 ============ -->
-  <section class="view" id="view-courses">
-    <div class="card list-toolbar">
-      <div class="search-box">
+  <section class="view" id="view-courses" data-page-node-id="jcDMhEjPth0iyryFB5GTbv">
+    <div class="card list-toolbar" data-page-node-id="lUSnmWry2DTgA5IaZkhsD4">
+      <div class="search-box" data-page-node-id="vB6BUAaBHAOFpMUOrOTbgG">
         <svg class="search-icon" width="15" height="15" viewBox="0 0 16 16" fill="none"
-             xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
-          <circle cx="7" cy="7" r="4.6" stroke="currentColor" stroke-width="1.5"/>
-          <path d="M10.6 10.6L14 14" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+             xmlns="http://www.w3.org/2000/svg" aria-hidden="true" data-page-node-id="FhKvIgu5xupc5nAv5Nh4Z0">
+          <circle cx="7" cy="7" r="4.6" stroke="currentColor" stroke-width="1.5" data-page-node-id="517jzW9vTzYBBU1JBIa48l"/>
+          <path d="M10.6 10.6L14 14" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" data-page-node-id="77jgtrAGWHuX7Gig6ORlPS"/>
         </svg>
-        <input id="searchInput" type="text" placeholder="搜索课程名 / 教师 / 教室" autocomplete="off">
+        <input id="searchInput" type="text" placeholder="搜索课程名 / 教师 / 教室" autocomplete="off" data-page-node-id="AgjljNOpkGGOSTGYGn2ULZ">
       </div>
-      <span class="badge" id="listCount"></span>
-      <button class="btn btn-primary" id="btnAdd">新增课程</button>
+      <span class="badge" id="listCount" data-page-node-id="etN2F0ALvwMdbTbbau0GUX"></span>
+      <button class="btn" id="btnImport" data-page-node-id="i9mP0rtBtnJwxt001">从教务系统导入</button>
+      <button class="btn btn-primary" id="btnAdd" data-page-node-id="N9xTRtQAmjflKIfeGv5FUE">新增课程</button>
     </div>
 
-    <div class="card" id="courseListCard"></div>
+    <div class="card" id="courseListCard" data-page-node-id="OwusE35v5K6F7G8DHPbaG3"></div>
   </section>
 
 </main>
 
 <!-- ============ 课程详情 ============ -->
-<div class="modal-backdrop" id="modalDetail">
-  <div class="modal">
-    <div class="modal-head">
-      <span class="modal-title">课程详情</span>
-      <button class="modal-close" data-close="modalDetail" aria-label="关闭">&times;</button>
+<div class="modal-backdrop" id="modalDetail" data-page-node-id="6DgQgg3BHVPQ7MQGgqTzbA">
+  <div class="modal" data-page-node-id="Tfb2HVYKVPX4Gx5Xg9miCI">
+    <div class="modal-head" data-page-node-id="aviZE7vAR6Q6Bfx8afCt2j">
+      <span class="modal-title" data-page-node-id="7i4wBdSH1ASPN6sriea62G">课程详情</span>
+      <button class="modal-close" data-close="modalDetail" aria-label="关闭" data-page-node-id="V8knLVVWETlNWI2KGHeK93">&times;</button>
     </div>
-    <div class="modal-body" id="detailBody"></div>
-    <div class="modal-foot">
-      <button class="btn btn-danger" id="btnDetailDelete">删除课程</button>
-      <button class="btn btn-primary" id="btnDetailEdit">编辑</button>
+    <div class="modal-body" id="detailBody" data-page-node-id="IJ7TOyboUhGzLjwNwORmC6"></div>
+    <div class="modal-foot" data-page-node-id="0qFj6R9FteZnd2wCtOHqiP">
+      <button class="btn btn-danger" id="btnDetailDelete" data-page-node-id="syJZ3GEdPrxZTA13BtKoLl">删除课程</button>
+      <button class="btn btn-primary" id="btnDetailEdit" data-page-node-id="sF52FFICgTYUBPjrJjuyPs">编辑</button>
     </div>
   </div>
 </div>
 
 <!-- ============ 新增 / 编辑 ============ -->
-<div class="modal-backdrop" id="modalForm">
-  <div class="modal">
-    <div class="modal-head">
-      <span class="modal-title" id="formTitle">新增课程</span>
-      <button class="modal-close" data-close="modalForm" aria-label="关闭">&times;</button>
+<div class="modal-backdrop" id="modalForm" data-page-node-id="ROgubzncg2QCOEsdZkXK7J">
+  <div class="modal" data-page-node-id="N9CmIOyYGXxTPE8Xs7TJSq">
+    <div class="modal-head" data-page-node-id="CJr0H6anhI7gBZ0tpfbATN">
+      <span class="modal-title" id="formTitle" data-page-node-id="3nWpKp9dRhmzDVDOa1ZF6W">新增课程</span>
+      <button class="modal-close" data-close="modalForm" aria-label="关闭" data-page-node-id="oUewjOA66FmMnhYQVkLIh4">&times;</button>
     </div>
-    <div class="modal-body">
-      <div class="form-grid">
-        <div class="field full">
-          <label for="fName">课程名称</label>
-          <input id="fName" type="text" placeholder="如：数据结构">
+    <div class="modal-body" data-page-node-id="V8KOMcFQlsb1jBalHtKEiL">
+      <div class="form-grid" data-page-node-id="zo6G9B3Pknd5qICtG7EIw1">
+        <div class="field full" data-page-node-id="yrXJREOhm1NTca2DGaVEm1">
+          <label for="fName" data-page-node-id="noYPNVdeEARO4FrOzLl2xK">课程名称</label>
+          <input id="fName" type="text" placeholder="如：数据结构" data-page-node-id="y5Q3B1GjNgWdvBMecG3aCh">
         </div>
-        <div class="field">
-          <label for="fTeacher">任课教师</label>
-          <input id="fTeacher" type="text" placeholder="如：王振宇">
+        <div class="field" data-page-node-id="So9RPIyVnOyPPHQkHzrMXN">
+          <label for="fTeacher" data-page-node-id="fAyO61QkbYgoFCQY6BBWw0">任课教师</label>
+          <input id="fTeacher" type="text" placeholder="如：王振宇" data-page-node-id="iXScumUcmcwLZCbqWlUxcD">
         </div>
-        <div class="field">
-          <label for="fLocation">上课地点</label>
-          <input id="fLocation" type="text" placeholder="如：信息楼 402">
+        <div class="field" data-page-node-id="mzqhKLB2aLTYhSOyXPFB2e">
+          <label for="fLocation" data-page-node-id="tipF85o370BefuGy2ptIfG">上课地点</label>
+          <input id="fLocation" type="text" placeholder="如：信息楼 402" data-page-node-id="R7Eg0qGaEFb0PafQ3WtfuE">
         </div>
-        <div class="field">
-          <label for="fDay">星期</label>
-          <select id="fDay"></select>
+        <div class="field" data-page-node-id="x1u48U4B9U8HyGUiKtmaSg">
+          <label for="fDay" data-page-node-id="RZYxFj84nvetbkJsW50lmE">星期</label>
+          <select id="fDay" data-page-node-id="NQur5WLcaoYo6mxmEyWYL4"></select>
         </div>
-        <div class="field">
-          <label for="fCategory">课程类别</label>
-          <select id="fCategory">
-            <option value="必修">必修</option>
-            <option value="选修">选修</option>
-            <option value="实践">实践</option>
+        <div class="field" data-page-node-id="Zdd97FSTE8ZR1vACQ4y93l">
+          <label for="fCategory" data-page-node-id="vatTsEb2BjYpDEzSCPcXtb">课程类别</label>
+          <select id="fCategory" data-page-node-id="3U3f4R394kCiAWjYXSV69Z">
+            <option value="必修" data-page-node-id="2BaOkh6D81EhR4dgXdNkOy">必修</option>
+            <option value="选修" data-page-node-id="8h8WVMefxVWrkeAx9PuAqn">选修</option>
+            <option value="实践" data-page-node-id="0BHyFymDrN5gKo5xBmmlyL">实践</option>
           </select>
         </div>
-        <div class="field">
-          <label for="fStart">开始节次</label>
-          <select id="fStart"></select>
+        <div class="field" data-page-node-id="V0nCY6ncbnrDKcVEEIolab">
+          <label for="fStart" data-page-node-id="DCCwlUyFq0j4je0CPef8qP">开始节次</label>
+          <select id="fStart" data-page-node-id="uetDD24Wf2Laed7AiZ2GHE"></select>
         </div>
-        <div class="field">
-          <label for="fEnd">结束节次</label>
-          <select id="fEnd"></select>
+        <div class="field" data-page-node-id="iD91o5HOJlBKdpUqZjHO8D">
+          <label for="fEnd" data-page-node-id="lCXBbzlfhR8pVDOiOnU7Xq">结束节次</label>
+          <select id="fEnd" data-page-node-id="ZmU7uyfaSRXR5VjbJ2g6J1"></select>
         </div>
-        <div class="field">
-          <label for="fWeekFrom">起始周</label>
-          <input id="fWeekFrom" type="number" min="1" value="1">
+        <div class="field" data-page-node-id="c9SlvBl5VWfhX3dfQJ459n">
+          <label for="fWeekFrom" data-page-node-id="mZAeaFp0ENq8iO4Zsmn6x0">起始周</label>
+          <input id="fWeekFrom" type="number" min="1" value="1" data-page-node-id="zJID7urPPknHD1lAne5Nwt">
         </div>
-        <div class="field">
-          <label for="fWeekTo">结束周</label>
-          <input id="fWeekTo" type="number" min="1" value="16">
+        <div class="field" data-page-node-id="XiXH7rcUK0mwyd2dxHcsQ4">
+          <label for="fWeekTo" data-page-node-id="BoFUtqzT8SBARbzGVKPvEI">结束周</label>
+          <input id="fWeekTo" type="number" min="1" value="16" data-page-node-id="E9XwLgos9HdYDAtkbvpKWz">
         </div>
-        <div class="field">
-          <label for="fPattern">周次模式</label>
-          <select id="fPattern">
-            <option value="all">每周</option>
-            <option value="odd">单周</option>
-            <option value="even">双周</option>
+        <div class="field" data-page-node-id="pjM1IdrKAzBTT4yDfcWvqV">
+          <label for="fPattern" data-page-node-id="ibow5Kjnn2V6LveZcJKfEu">周次模式</label>
+          <select id="fPattern" data-page-node-id="ZXohNh0J5LlX1mbLf6xH4g">
+            <option value="all" data-page-node-id="sDdw95P7DE0VNiNfHBgCAL">每周</option>
+            <option value="odd" data-page-node-id="sLat2s3yYouPiZ2V0AiaIL">单周</option>
+            <option value="even" data-page-node-id="PA1HtCcmvqia1MQVJDsOYG">双周</option>
           </select>
         </div>
-        <div class="field">
-          <label for="fCredit">学分</label>
-          <input id="fCredit" type="number" min="0" max="10" step="0.5" value="3">
+        <div class="field" data-page-node-id="YNizRZJ1z0E6lJEMbGdZ5k">
+          <label for="fCredit" data-page-node-id="z2BrYE4JQx10Y9NZQhRwmV">学分</label>
+          <input id="fCredit" type="number" min="0" max="10" step="0.5" value="3" data-page-node-id="cvkY1cGFlBmatCQU8VfGsE">
         </div>
-        <div class="field full">
-          <label>课表颜色</label>
-          <div class="color-picker" id="colorPicker"></div>
+        <div class="field full" data-page-node-id="2MF1ptyLPL4RmJBPNM4EeA">
+          <label data-page-node-id="TvG2JCjXUYPSpneRxYyyjL">课表颜色</label>
+          <div class="color-picker" id="colorPicker" data-page-node-id="anqlWyfb7jtVdqsSjxRIOQ"></div>
         </div>
-        <div class="field full">
-          <label for="fNote">备注</label>
+        <div class="field full" data-page-node-id="VI8vr9oBVsE7EEEtlDraxp">
+          <label for="fNote" data-page-node-id="9gwnPbEYApKjtNhLRPY0K9">备注</label>
           <textarea id="fNote" placeholder="选填，如：单周上课、需带实验指导书"></textarea>
         </div>
-        <div class="field full">
-          <span class="field-error" id="formError"></span>
+        <div class="field full" data-page-node-id="hy5C2KRJBF3xbi9srpBwxw">
+          <span class="field-error" id="formError" data-page-node-id="GhdXMg7DA1kkpKA84LP0wf"></span>
         </div>
       </div>
     </div>
-    <div class="modal-foot">
-      <button class="btn" data-close="modalForm">取消</button>
-      <button class="btn btn-primary" id="btnFormSave">保存</button>
+    <div class="modal-foot" data-page-node-id="Vpbb2IOu6kdJW0ix2aWosV">
+      <button class="btn" data-close="modalForm" data-page-node-id="Q8d1lAry6YDKSDc4HKxvWo">取消</button>
+      <button class="btn btn-primary" id="btnFormSave" data-page-node-id="IoeFXDMp1SGdXZ6TTy5FeU">保存</button>
     </div>
+  </div>
+</div>
+
+<!-- ============ 从教务系统导入 ============ -->
+<div class="modal-backdrop" id="modalImport" data-page-node-id="m0dImpJwxt00001">
+  <div class="modal" style="max-width:560px" data-page-node-id="m0dImpJwxt00002">
+    <div class="modal-head" data-page-node-id="m0dImpJwxt00003">
+      <span class="modal-title" data-page-node-id="m0dImpJwxt00004">从教务系统导入</span>
+      <button class="modal-close" data-close="modalImport" aria-label="关闭" data-page-node-id="m0dImpJwxt00005">&times;</button>
+    </div>
+    <div class="modal-body" id="importBody" data-page-node-id="m0dImpJwxt00006"></div>
+    <div class="modal-foot" id="importFoot" data-page-node-id="m0dImpJwxt00007"></div>
   </div>
 </div>
 
 <!-- ============ 确认框 ============ -->
-<div class="modal-backdrop" id="modalConfirm">
-  <div class="modal" style="max-width:400px">
-    <div class="modal-head">
-      <span class="modal-title" id="confirmTitle">确认操作</span>
-      <button class="modal-close" data-close="modalConfirm" aria-label="关闭">&times;</button>
+<div class="modal-backdrop" id="modalConfirm" data-page-node-id="wZw7ocNRNbZstWZzm5Y61P">
+  <div class="modal" style="max-width:400px" data-page-node-id="KDuheGZXUIKgo5MHXys5Cq">
+    <div class="modal-head" data-page-node-id="b9c36mvNjTZ38o8esaRIVZ">
+      <span class="modal-title" id="confirmTitle" data-page-node-id="IClGGasNDdehfR1VIqIxas">确认操作</span>
+      <button class="modal-close" data-close="modalConfirm" aria-label="关闭" data-page-node-id="tpbwByGAbQqpIziQpy7wHu">&times;</button>
     </div>
-    <div class="modal-body" id="confirmBody"></div>
-    <div class="modal-foot">
-      <button class="btn" data-close="modalConfirm">取消</button>
-      <button class="btn btn-danger" id="btnConfirmOk">确认</button>
+    <div class="modal-body" id="confirmBody" data-page-node-id="bIlDk5zsDTW8GizZ46TrJg"></div>
+    <div class="modal-foot" data-page-node-id="hn0B4dBHgt9aZcj6WPEvd8">
+      <button class="btn" data-close="modalConfirm" data-page-node-id="k3QcCA7kucixDNqXFRYdEx">取消</button>
+      <button class="btn btn-danger" id="btnConfirmOk" data-page-node-id="iwpaCGs05WGnv5rFh8iS3T">确认</button>
     </div>
   </div>
 </div>
 
-<div class="toast-wrap" id="toastWrap"></div>
+<div class="toast-wrap" id="toastWrap" data-page-node-id="Tmlg0g5Omod1IS2NqDjIU0"></div>
 
 <script src="js/store.js"></script>
 <script src="js/app.js"></script>

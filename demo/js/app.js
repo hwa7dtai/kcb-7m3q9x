@@ -22,7 +22,10 @@
     editingId: null,
     detailId: null,
     formColor: 'blue',
-    confirmHandler: null
+    confirmHandler: null,
+    importStep: 'form',        // form | loading | preview
+    importForm: { studentId: '', password: '' },
+    importFetched: null
   };
 
   /* ============================ 通用工具 ============================ */
@@ -42,14 +45,6 @@
   function todayIso() {
     var d = new Date();
     return d.getFullYear() + '-' + pad(d.getMonth() + 1) + '-' + pad(d.getDate());
-  }
-
-  function slotOf(period) {
-    var slots = (state.semester && state.semester.periodSlots) || [];
-    for (var i = 0; i < slots.length; i++) {
-      if (period >= slots[i].start && period <= slots[i].end) { return slots[i].slot; }
-    }
-    return '';
   }
 
   function toast(message, type) {
@@ -196,8 +191,10 @@
     }
 
     for (var p = 1; p <= s.totalPeriods; p++) {
-      html += '<div class="grid-period"><span class="period-no">' + p + '</span>' +
-        '<span class="period-slot">' + esc(slotOf(p)) + '</span></div>';
+      var t = s.periodTimes[p - 1];
+      html += '<div class="grid-period">' +
+        '<span class="period-time">' + esc(t ? t.start : '') + '</span>' +
+        '<span class="period-no">第 ' + p + ' 节</span></div>';
       for (var d2 = 1; d2 <= 7; d2++) {
         html += '<div class="grid-cell' + (d2 === 7 ? ' is-row-end' : '') +
           (d2 >= 6 ? ' col-weekend' : '') + '"></div>';
@@ -210,6 +207,7 @@
         'data-id="' + esc(c.id) + '" data-action="open-course" ' +
         'style="grid-column:' + (c.dayOfWeek + 1) + ';grid-row:' + (c.startPeriod + 1) + ' / span ' + span + '">' +
         '<span class="cb-name">' + esc(c.name) + '</span>' +
+        '<span class="cb-meta cb-teacher">' + esc(c.teacher || '教师待定') + '</span>' +
         '<span class="cb-meta">' + esc(c.location || '地点待定') + '</span>' +
         '<span class="cb-weeks">' + esc(c.weekText) + '</span>' +
         '</button>';
@@ -237,8 +235,10 @@
           '没有与「' + state.keyword + '」相关的课程，试试更换关键词。',
           '<button class="btn" data-action="clear-search">清除搜索</button>')
         : emptyState(emptyIcon, '本学期还没有课程',
-          '新增第一门课程后，课表视图会立即同步更新。',
-          '<button class="btn btn-primary" data-action="add-course">新增课程</button>');
+          '手动新增第一门课程，或从教务系统一键导入。',
+          '<div style="display:flex;gap:8px;justify-content:center;flex-wrap:wrap">' +
+          '<button class="btn btn-primary" data-action="add-course">新增课程</button>' +
+          '<button class="btn" data-action="import-jwxt">从教务系统导入</button></div>');
       box.innerHTML = html;
       return;
     }
@@ -248,6 +248,7 @@
         '<div class="item-when">' +
         '<div class="when-day">' + esc(c.dayText) + '</div>' +
         '<div class="when-period">' + esc(c.startPeriod + '-' + c.endPeriod + ' 节') + '</div>' +
+        (c.timeText ? '<div class="when-time">' + esc(c.timeText) + '</div>' : '') +
         '</div>' +
         '<div class="item-main">' +
         '<div class="item-name">' + esc(c.name) +
@@ -278,10 +279,13 @@
       $('#detailBody').innerHTML =
         '<div class="detail-hero c-' + esc(c.color) + '">' +
         '<h3>' + esc(c.name) + '</h3>' +
-        '<p>' + esc(c.dayText) + ' · ' + esc(c.periodText) + ' · ' + esc(c.location || '地点待定') + '</p>' +
+        '<p>' + esc(c.teacher) + ' · ' + esc(c.dayText) + ' ' + esc(c.periodText) +
+        (c.timeText ? '（' + esc(c.timeText) + '）' : '') + ' · ' + esc(c.location || '地点待定') + '</p>' +
         '</div>' +
         '<dl class="detail-grid">' +
         '<dt>任课教师</dt><dd>' + esc(c.teacher) + '</dd>' +
+        '<dt>上课时间</dt><dd>' + esc(c.dayText) + ' ' + esc(c.periodText) +
+        (c.timeText ? '（' + esc(c.timeText) + '）' : '') + '</dd>' +
         '<dt>课程类别</dt><dd>' + esc(c.category) + '</dd>' +
         '<dt>学分</dt><dd>' + c.credit + ' 学分</dd>' +
         '<dt>上课周次</dt><dd>' + esc(c.weekText) + '</dd>' +
@@ -450,6 +454,146 @@
     });
   }
 
+  /* ============================ 从教务系统导入 ============================ */
+
+  function openImport() {
+    state.importStep = 'form';
+    state.importFetched = null;
+    renderImport();
+    openModal('modalImport');
+  }
+
+  function renderImport() {
+    var body = $('#importBody');
+    var foot = $('#importFoot');
+
+    /* ---- 第一步：填写教务系统账号 ---- */
+    if (state.importStep === 'form') {
+      body.innerHTML =
+        '<div class="import-tip">演示模式不会真正连接教务系统，读取到的是模拟数据。' +
+        '正式版将按 PLAN.md 的方案自动登录教务系统并抓取课表。</div>' +
+        '<div class="field"><label for="impStudent">学号</label>' +
+        '<input id="impStudent" type="text" placeholder="请输入学号" autocomplete="off"></div>' +
+        '<div class="field"><label for="impPassword">教务系统密码</label>' +
+        '<input id="impPassword" type="password" placeholder="请输入密码" autocomplete="off"></div>' +
+        '<div class="field full"><span class="field-error" id="importError"></span></div>';
+
+      if (state.importForm.studentId || state.importForm.password) {
+        $('#impStudent').value = state.importForm.studentId;
+        $('#impPassword').value = state.importForm.password;
+      }
+
+      foot.innerHTML =
+        '<button class="btn" data-close="modalImport">取消</button>' +
+        '<button class="btn btn-primary" id="btnImportFetch">连接并读取课表</button>';
+      $('#btnImportFetch').addEventListener('click', startImportFetch);
+      return;
+    }
+
+    /* ---- 第二步：读取中 ---- */
+    if (state.importStep === 'loading') {
+      body.innerHTML =
+        '<div class="import-loading">' +
+        '<div class="imp-spinner"></div>' +
+        '<ol class="imp-steps">' +
+        '<li class="is-done">连接教务系统</li>' +
+        '<li class="is-active">登录并读取课表…</li>' +
+        '<li>解析排课数据</li>' +
+        '</ol></div>';
+      foot.innerHTML = '<button class="btn" data-close="modalImport">取消</button>';
+      return;
+    }
+
+    /* ---- 第三步：预览与勾选 ---- */
+    var fetched = state.importFetched || { courses: [] };
+    var items = fetched.courses.map(function (raw, index) {
+      return {
+        raw: raw,
+        index: index,
+        conflict: Store.helpers.checkConflict(raw),
+        color: COLORS[index % COLORS.length]
+      };
+    });
+    var okCount = items.filter(function (it) { return !it.conflict; }).length;
+
+    var listHtml = items.map(function (it) {
+      var c = it.raw;
+      var disabled = !!it.conflict;
+      var timeText = Store.helpers.periodTimeRange(c.startPeriod, c.endPeriod);
+      var meta = Store.helpers.weekdayLabel(c.dayOfWeek) + ' 第 ' + c.startPeriod + '-' + c.endPeriod + ' 节' +
+        (timeText ? ' · ' + timeText : '') +
+        ' · 第 ' + c.weekRule.from + '-' + c.weekRule.to + ' 周' +
+        (c.weekRule.pattern === 'odd' ? '（单周）' : c.weekRule.pattern === 'even' ? '（双周）' : '');
+
+      return '<label class="import-item c-' + it.color + (disabled ? ' is-disabled' : '') + '">' +
+        '<input type="checkbox" data-jwxt-index="' + it.index + '"' +
+        (disabled ? ' disabled' : ' checked') + '>' +
+        '<span class="import-item-main">' +
+        '<span class="import-item-name">' + esc(c.name) +
+        '<span class="tag">' + esc(c.category || '必修') + '</span>' +
+        (disabled ? '<span class="conflict-badge">与《' + esc(it.conflict.name) + '》冲突</span>' : '') +
+        '</span>' +
+        '<span class="import-item-sub">' + esc(c.teacher) + ' · ' + esc(c.location || '地点待定') + ' · ' + esc(meta) + '</span>' +
+        '</span></label>';
+    }).join('');
+
+    body.innerHTML =
+      '<p class="import-summary">已从「' + esc(fetched.source || '教务系统') + '」读取到 <b>' + items.length +
+      '</b> 门课程，其中 <b>' + okCount + '</b> 门与当前课表无冲突，勾选后即可导入。</p>' +
+      '<div class="import-list">' + listHtml + '</div>';
+
+    foot.innerHTML =
+      '<button class="btn" data-close="modalImport">取消</button>' +
+      '<button class="btn btn-primary" id="btnImportConfirm">导入所选 ' + okCount + ' 门</button>';
+    $('#btnImportConfirm').addEventListener('click', confirmImport);
+  }
+
+  function startImportFetch() {
+    var studentId = ($('#impStudent').value || '').trim();
+    var password = $('#impPassword').value || '';
+    if (!studentId || !password) {
+      $('#importError').textContent = '请填写学号与密码（演示模式下可任意填写）';
+      return;
+    }
+    state.importForm = { studentId: studentId, password: password };
+    state.importStep = 'loading';
+    renderImport();
+
+    Store.fetchFromJwxt({ studentId: studentId, password: password }).then(function (res) {
+      state.importFetched = res;
+      state.importStep = 'preview';
+      renderImport();
+    }).catch(function (err) {
+      state.importStep = 'form';
+      renderImport();
+      $('#importError').textContent = err.message || '读取失败，请重试';
+    });
+  }
+
+  function confirmImport() {
+    var boxes = $$('#importBody .import-item input[type="checkbox"]');
+    var selected = boxes.filter(function (b) { return b.checked; }).map(function (b) {
+      return state.importFetched.courses[Number(b.getAttribute('data-jwxt-index'))];
+    });
+    if (!selected.length) { toast('请先勾选要导入的课程', 'error'); return; }
+
+    var btn = $('#btnImportConfirm');
+    btn.disabled = true;
+    btn.textContent = '导入中…';
+
+    Store.importCourses(selected).then(function (res) {
+      closeModal('modalImport');
+      toast('成功导入 ' + res.imported.length + ' 门课程' +
+        (res.skipped.length ? '，跳过 ' + res.skipped.length + ' 门冲突课程' : ''),
+        res.imported.length ? 'success' : 'error');
+      return refreshAll();
+    }).catch(function (err) {
+      btn.disabled = false;
+      btn.textContent = '导入';
+      toast(err.message || '导入失败', 'error');
+    });
+  }
+
   /* ============================ 事件绑定 ============================ */
 
   function switchView(view) {
@@ -481,6 +625,7 @@
     });
 
     $('#btnAdd').addEventListener('click', function () { openForm(null); });
+    $('#btnImport').addEventListener('click', openImport);
 
     $('#searchInput').addEventListener('input', function (e) {
       var value = e.target.value;
@@ -515,6 +660,9 @@
 
     /* 事件委托：课表块与列表项 */
     document.addEventListener('click', function (e) {
+      var closeEl = e.target.closest('[data-close]');
+      if (closeEl) { closeModal(closeEl.getAttribute('data-close')); return; }
+
       var actionEl = e.target.closest('[data-action]');
       if (actionEl) {
         var action = actionEl.getAttribute('data-action');
@@ -523,6 +671,7 @@
         if (action === 'edit-course') { openForm(id); return; }
         if (action === 'delete-course') { askDelete(id); return; }
         if (action === 'add-course') { openForm(null); return; }
+        if (action === 'import-jwxt') { openImport(); return; }
         if (action === 'clear-search') {
           $('#searchInput').value = '';
           state.keyword = '';

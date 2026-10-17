@@ -252,9 +252,9 @@ input, select, textarea { font-family: inherit; font-size: inherit; }
 
 .schedule-grid {
   display: grid;
-  grid-template-columns: 62px repeat(7, minmax(118px, 1fr));
-  grid-auto-rows: minmax(54px, auto);
-  min-width: 880px;
+  grid-template-columns: 78px repeat(7, minmax(118px, 1fr));
+  grid-auto-rows: minmax(58px, auto);
+  min-width: 900px;
 }
 
 .grid-corner {
@@ -311,8 +311,15 @@ input, select, textarea { font-family: inherit; font-size: inherit; }
   line-height: 1.25;
 }
 
-.grid-period .period-no { font-weight: 600; color: var(--text); font-size: 13px; }
-.grid-period .period-slot { font-size: 10px; color: var(--text-faint); }
+.grid-period .period-time {
+  font-weight: 600;
+  color: var(--text);
+  font-size: 13px;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: .2px;
+}
+
+.grid-period .period-no { font-size: 10.5px; color: var(--text-faint); }
 
 .grid-cell {
   border-right: 1px solid var(--border);
@@ -365,6 +372,8 @@ input, select, textarea { font-family: inherit; font-size: inherit; }
   overflow: hidden;
   text-overflow: ellipsis;
 }
+
+.course-block .cb-teacher { font-weight: 500; opacity: .95; }
 
 .course-block .cb-weeks {
   font-size: 10.5px;
@@ -446,6 +455,7 @@ input, select, textarea { font-family: inherit; font-size: inherit; }
 
 .item-when .when-day { font-weight: 600; font-size: 13px; }
 .item-when .when-period { font-size: 11px; opacity: .85; }
+.item-when .when-time { font-size: 10.5px; opacity: .7; font-variant-numeric: tabular-nums; }
 
 .item-main { min-width: 0; }
 
@@ -672,6 +682,126 @@ input, select, textarea { font-family: inherit; font-size: inherit; }
 .color-dot.is-active {
   border-color: var(--text);
   box-shadow: inset 0 0 0 2px #fff;
+}
+
+/* ============================ 从教务系统导入 ============================ */
+
+.import-tip {
+  font-size: 12.5px;
+  color: var(--text-muted);
+  background: var(--primary-soft);
+  border: 1px solid #dbeafe;
+  border-radius: var(--radius-sm);
+  padding: 10px 12px;
+  margin-bottom: 16px;
+}
+
+.import-loading { padding: 30px 8px 22px; text-align: center; }
+
+.imp-spinner {
+  width: 34px;
+  height: 34px;
+  margin: 0 auto 20px;
+  border: 3px solid var(--border);
+  border-top-color: var(--primary);
+  border-radius: 50%;
+  animation: imp-spin .8s linear infinite;
+}
+
+@keyframes imp-spin { to { transform: rotate(360deg); } }
+
+.imp-steps {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  font-size: 13px;
+  color: var(--text-faint);
+}
+
+.imp-steps li {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+}
+
+.imp-steps li::before {
+  content: '';
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--border-strong);
+}
+
+.imp-steps li.is-done { color: var(--text-muted); }
+.imp-steps li.is-done::before { background: #22c55e; }
+
+.imp-steps li.is-active { color: var(--primary); font-weight: 500; }
+.imp-steps li.is-active::before { background: var(--primary); animation: imp-pulse 1s ease infinite; }
+
+@keyframes imp-pulse { 50% { opacity: .3; } }
+
+.import-summary { font-size: 13px; color: var(--text-muted); margin: 0 0 12px; }
+.import-summary b { color: var(--text); }
+
+.import-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  max-height: 46vh;
+  min-height: 120px;
+  overflow-y: auto;
+}
+
+.import-item {
+  display: flex;
+  gap: 10px;
+  align-items: flex-start;
+  border: 1px solid var(--border);
+  border-left: 3px solid var(--cb-line, var(--border-strong));
+  border-radius: var(--radius-sm);
+  padding: 10px 12px;
+  background: var(--cb-bg, var(--surface));
+  cursor: pointer;
+  transition: border-color .15s, background .15s;
+}
+
+.import-item:hover { border-color: var(--border-strong); }
+
+.import-item.is-disabled {
+  opacity: .68;
+  cursor: not-allowed;
+  background: var(--surface-soft);
+  border-left-color: var(--border-strong);
+}
+
+.import-item input { margin-top: 3px; flex-shrink: 0; }
+
+.import-item-main { min-width: 0; display: flex; flex-direction: column; gap: 3px; }
+
+.import-item-name {
+  font-weight: 600;
+  font-size: 13.5px;
+  color: var(--cb-text, var(--text));
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.import-item-sub { font-size: 12px; color: var(--text-muted); }
+
+.conflict-badge {
+  font-size: 11px;
+  font-weight: 500;
+  color: #92400e;
+  background: #fef3c7;
+  border: 1px solid #fde68a;
+  border-radius: 4px;
+  padding: 1px 6px;
 }
 
 /* ============================ Toast ============================ */

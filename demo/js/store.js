@@ -23,13 +23,20 @@
 
   var WEEKDAY_LABELS = ['周一', '周二', '周三', '周四', '周五', '周六', '周日'];
 
-  var PERIOD_SLOTS = [
-    { start: 1, end: 2, slot: '上午' },
-    { start: 3, end: 4, slot: '上午' },
-    { start: 5, end: 6, slot: '下午' },
-    { start: 7, end: 8, slot: '下午' },
-    { start: 9, end: 10, slot: '晚上' },
-    { start: 11, end: 12, slot: '晚上' }
+  /* 每一节课的上下课时间，用于课表左侧时间列与课程详情 */
+  var PERIOD_TIMES = [
+    { start: '08:00', end: '08:45' },
+    { start: '08:55', end: '09:40' },
+    { start: '10:00', end: '10:45' },
+    { start: '10:55', end: '11:40' },
+    { start: '14:00', end: '14:45' },
+    { start: '14:55', end: '15:40' },
+    { start: '16:00', end: '16:45' },
+    { start: '16:55', end: '17:40' },
+    { start: '19:00', end: '19:45' },
+    { start: '19:55', end: '20:40' },
+    { start: '21:00', end: '21:45' },
+    { start: '21:55', end: '22:40' }
   ];
 
   var TOTAL_PERIODS = 12;
@@ -100,6 +107,47 @@
     }
   ];
 
+  /* ============================ 教务系统导入（Mock） ============================ */
+
+  /* 模拟"从教务系统读到的课表"：刻意与现有课表部分冲突，用于演示冲突跳过逻辑 */
+  var JWXT_MOCK_COURSES = [
+    { name: '高等数学 A（上）', teacher: '李文博', location: '教学楼 A-301', credit: 4, dayOfWeek: 1, startPeriod: 1, endPeriod: 2, weekRule: { from: 1, to: 16, pattern: 'all' }, category: '必修' },
+    { name: '大学英语（三）', teacher: '陈曦', location: '外语楼 205', credit: 3, dayOfWeek: 1, startPeriod: 3, endPeriod: 4, weekRule: { from: 1, to: 16, pattern: 'all' }, category: '必修' },
+    { name: '大学物理（二）', teacher: '何静', location: '教学楼 C-205', credit: 3.5, dayOfWeek: 1, startPeriod: 5, endPeriod: 6, weekRule: { from: 1, to: 16, pattern: 'all' }, category: '必修' },
+    { name: '数据结构', teacher: '王振宇', location: '信息楼 402', credit: 3, dayOfWeek: 2, startPeriod: 1, endPeriod: 2, weekRule: { from: 1, to: 16, pattern: 'all' }, category: '必修' },
+    { name: '概率论与数理统计', teacher: '罗颖', location: '教学楼 B-302', credit: 3, dayOfWeek: 2, startPeriod: 3, endPeriod: 4, weekRule: { from: 1, to: 16, pattern: 'all' }, category: '必修' },
+    { name: '中国近现代史纲要', teacher: '吴桐', location: '文科楼 201', credit: 3, dayOfWeek: 3, startPeriod: 1, endPeriod: 2, weekRule: { from: 1, to: 16, pattern: 'all' }, category: '必修' },
+    { name: '体育（三）', teacher: '孙浩', location: '东田径场', credit: 1, dayOfWeek: 3, startPeriod: 5, endPeriod: 6, weekRule: { from: 1, to: 16, pattern: 'all' }, category: '必修' },
+    { name: '工程训练', teacher: '周雅', location: '工程中心 102', credit: 2, dayOfWeek: 4, startPeriod: 9, endPeriod: 10, weekRule: { from: 3, to: 15, pattern: 'odd' }, category: '实践' },
+    { name: '马克思主义基本原理', teacher: '吴桐', location: '文科楼 101', credit: 3, dayOfWeek: 5, startPeriod: 3, endPeriod: 4, weekRule: { from: 1, to: 16, pattern: 'all' }, category: '必修' },
+    { name: '大学生心理健康', teacher: '冯晓', location: '文科楼 207', credit: 2, dayOfWeek: 5, startPeriod: 9, endPeriod: 10, weekRule: { from: 1, to: 16, pattern: 'all' }, category: '选修' }
+  ];
+
+  var IMPORT_COLORS = ['blue', 'teal', 'amber', 'purple', 'rose', 'green', 'cyan'];
+  var importSeq = 500;
+
+  /** 把教务系统读到的原始课程规整为内部数据结构 */
+  function normalizeImported(raw, index) {
+    return {
+      name: String(raw.name || '').trim(),
+      teacher: String(raw.teacher || '').trim(),
+      location: String(raw.location || '').trim(),
+      credit: Number(raw.credit) || 0,
+      dayOfWeek: Number(raw.dayOfWeek),
+      startPeriod: Number(raw.startPeriod),
+      endPeriod: Number(raw.endPeriod),
+      weekRule: {
+        from: Number(raw.weekRule && raw.weekRule.from),
+        to: Number(raw.weekRule && raw.weekRule.to),
+        pattern: (raw.weekRule && raw.weekRule.pattern) || 'all'
+      },
+      category: raw.category || '必修',
+      color: IMPORT_COLORS[index % IMPORT_COLORS.length],
+      note: String(raw.note || '').trim(),
+      source: 'jwxt'
+    };
+  }
+
   /* ============================ 内存数据库 ============================ */
 
   var db = {
@@ -151,6 +199,14 @@
     if (!rule) { return '未设置'; }
     var suffix = rule.pattern === 'odd' ? '(单周)' : (rule.pattern === 'even' ? '(双周)' : '');
     return '第 ' + rule.from + '-' + rule.to + ' 周' + suffix;
+  }
+
+  /** 起止节次对应的上课时间范围，如 "08:00-09:40" */
+  function periodTimeRange(startPeriod, endPeriod) {
+    var a = PERIOD_TIMES[startPeriod - 1];
+    var b = PERIOD_TIMES[endPeriod - 1];
+    if (!a || !b) { return ''; }
+    return a.start + '-' + b.end;
   }
 
   /** 两个课程在具体周次上是否存在交集 */
@@ -211,6 +267,7 @@
     copy.weeks = expandWeeks(course.weekRule);
     copy.weekText = formatWeekRule(course.weekRule);
     copy.periodText = '第 ' + course.startPeriod + '-' + course.endPeriod + ' 节';
+    copy.timeText = periodTimeRange(course.startPeriod, course.endPeriod);
     copy.dayText = WEEKDAY_LABELS[course.dayOfWeek - 1] || '';
     return copy;
   }
@@ -242,7 +299,7 @@
       data.currentWeek = computeCurrentWeek();
       data.weekdayLabels = WEEKDAY_LABELS.slice();
       data.totalPeriods = TOTAL_PERIODS;
-      data.periodSlots = deepClone(PERIOD_SLOTS);
+      data.periodTimes = deepClone(PERIOD_TIMES);
       return delay(data, 120);
     },
 
@@ -341,10 +398,61 @@
       }, LATENCY);
     },
 
+    /* ---------- 从教务系统导入（Mock） ---------- */
+
+    /**
+     * 模拟"连接教务系统并读取课表"。
+     * 真实实现按 PLAN.md：requests 会话 + RSA 加密登录 + 解析课表接口，
+     * 此处仅返回模拟数据，用于演示完整导入流程。
+     */
+    fetchFromJwxt: function (params) {
+      params = params || {};
+      var studentId = String(params.studentId || '').trim();
+      var password = String(params.password || '');
+      if (!studentId) { return delay(fail('请输入学号'), 120); }
+      if (!password) { return delay(fail('请输入教务系统密码'), 120); }
+      return delay({
+        studentId: studentId,
+        semesterName: SEMESTER.name,
+        source: '正方教务系统（模拟数据）',
+        courses: deepClone(JWXT_MOCK_COURSES)
+      }, 1500);
+    },
+
+    /**
+     * 批量导入教务系统课程：逐门做字段校验与时间冲突检测，
+     * 返回 { imported, skipped }，skip 的课程带原因，不影响其他课程导入。
+     */
+    importCourses: function (list) {
+      var result = { imported: [], skipped: [] };
+      (list || []).forEach(function (raw, index) {
+        var payload = normalizeImported(raw, index);
+        var error = validate(payload);
+        if (error) {
+          result.skipped.push({ name: payload.name, reason: error });
+          return;
+        }
+        var conflict = findConflict(payload, null);
+        if (conflict) {
+          result.skipped.push({
+            name: payload.name,
+            reason: '与《' + conflict.name + '》时间冲突',
+            conflictWith: conflict.name
+          });
+          return;
+        }
+        payload.id = 'j' + (++importSeq);
+        db.courses.push(payload);
+        result.imported.push(decorate(payload));
+      });
+      return delay(result, LATENCY);
+    },
+
     /* ---------- 演示控制（仅 Demo 使用） ---------- */
     resetDemo: function () {
       db.courses = deepClone(SEED_COURSES);
       idSeq = 100;
+      importSeq = 500;
       return delay({ total: db.courses.length }, 160);
     },
 
@@ -357,7 +465,13 @@
     helpers: {
       expandWeeks: expandWeeks,
       formatWeekRule: formatWeekRule,
-      weekdayLabel: function (day) { return WEEKDAY_LABELS[day - 1] || ''; }
+      periodTimeRange: periodTimeRange,
+      weekdayLabel: function (day) { return WEEKDAY_LABELS[day - 1] || ''; },
+      /** 传入一门课（payload 结构），返回与它时间冲突的已有课程或 null */
+      checkConflict: function (course) {
+        var c = findConflict(course, null);
+        return c ? { id: c.id, name: c.name } : null;
+      }
     }
   };
 

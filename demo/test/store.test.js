@@ -3,8 +3,8 @@
  *
  * 运行： node demo/test/store.test.js
  *
- * 覆盖：学期信息、周次展开（单周/双周）、课表按周过滤、空周次、
- *       搜索、新增、校验、时间冲突、更新、删除、清空与重置。
+ * 覆盖：学期信息、节次时间、周次展开（单周/双周）、课表按周过滤、空周次、
+ *       搜索、新增、校验、时间冲突、更新、删除、教务系统导入、清空与重置。
  * 接入真实接口后，本脚本可继续作为数据层的契约测试使用。
  */
 'use strict';
@@ -160,6 +160,53 @@ function basePayload(overrides) {
   await Store.resetDemo();
   const reset = await Store.listCourses({});
   check('重置后恢复 10 门', reset.length === 10, reset.length);
+
+  /* ---------- 节次时间 ---------- */
+  check('提供 12 个节次的上下课时间', semester.periodTimes.length === 12, semester.periodTimes.length);
+  const timeCourse = w1.courses.filter(c => c.name === '高等数学 A（上）')[0];
+  check('第 1-2 节时间为 08:00-09:40', !!timeCourse && timeCourse.timeText === '08:00-09:40',
+    timeCourse && timeCourse.timeText);
+  const timeLong = w2.courses.filter(c => c.name === '计算机组成原理实验')[0];
+  check('第 5-8 节连堂时间为 14:00-17:40', !!timeLong && timeLong.timeText === '14:00-17:40',
+    timeLong && timeLong.timeText);
+
+  /* ---------- 教务系统导入（Mock） ---------- */
+  await expectReject('学号为空时拒绝读取', Store.fetchFromJwxt({ studentId: '  ', password: 'x' }), /学号/);
+  await expectReject('密码为空时拒绝读取', Store.fetchFromJwxt({ studentId: '2026001', password: '' }), /密码/);
+
+  const fetched = await Store.fetchFromJwxt({ studentId: '2026001', password: 'demo' });
+  check('模拟读取到 10 门课程', fetched.courses.length === 10, fetched.courses.length);
+  check('读取结果带来源标识', fetched.source.indexOf('教务系统') !== -1, fetched.source);
+
+  const beforeImport = await Store.listCourses({});
+  const importResult = await Store.importCourses(fetched.courses);
+  check('冲突课程被跳过 5 门', importResult.skipped.length === 5, importResult.skipped.length);
+  check('无冲突课程导入 5 门', importResult.imported.length === 5, importResult.imported.length);
+  check('跳过原因标注冲突课程',
+    importResult.skipped.every(s => /冲突/.test(s.reason) && !!s.conflictWith),
+    importResult.skipped.map(s => s.reason).join(' | '));
+  check('导入课程带教务系统来源标记', importResult.imported.every(c => c.source === 'jwxt'));
+  const afterImport = await Store.listCourses({});
+  check('导入后列表增加 5 门', afterImport.length === beforeImport.length + 5, afterImport.length);
+
+  const reimport = await Store.importCourses(fetched.courses);
+  check('重复导入全部被冲突检测拦截',
+    reimport.imported.length === 0 && reimport.skipped.length === 10,
+    reimport.imported.length + '/' + reimport.skipped.length);
+
+  /* 清理导入数据，恢复初始状态 */
+  const jwxtImported = afterImport.filter(c => c.source === 'jwxt');
+  for (const c of jwxtImported) { await Store.deleteCourse(c.id); }
+  const afterCleanup = await Store.listCourses({});
+  check('清理导入课程后恢复 10 门', afterCleanup.length === 10, afterCleanup.length);
+
+  /* ---------- 供 UI 复用的纯函数 ---------- */
+  check('checkConflict 能识别冲突',
+    !!Store.helpers.checkConflict({ dayOfWeek: 1, startPeriod: 1, endPeriod: 2, weekRule: { from: 1, to: 16, pattern: 'all' } }));
+  check('checkConflict 对空闲时段返回 null',
+    Store.helpers.checkConflict({ dayOfWeek: 7, startPeriod: 1, endPeriod: 2, weekRule: { from: 1, to: 16, pattern: 'all' } }) === null);
+  check('periodTimeRange 计算连堂时间', Store.helpers.periodTimeRange(5, 8) === '14:00-17:40',
+    Store.helpers.periodTimeRange(5, 8));
 
   /* ---------- 结果 ---------- */
   console.log('\n结果： ' + passed + ' 通过，' + failed + ' 失败\n');
