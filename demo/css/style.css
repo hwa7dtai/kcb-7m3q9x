@@ -60,43 +60,60 @@ button { font-family: inherit; font-size: inherit; cursor: pointer; color: inher
 input, select, textarea { font-family: inherit; font-size: inherit; color: inherit; }
 
 /* ============================ 氛围背景层 ============================ */
+/* 层级：照片(0) < 蓝色压暗(1) < 中央光晕(2) < 粒子 canvas(3) < 暗角(4) */
 
-.bg-fog, .bg-vignette, .bg-grain, #particleCanvas {
+.bg-photo, .bg-tint, .bg-glow, .bg-vignette, #particleCanvas {
   position: fixed;
   pointer-events: none;
 }
 
-.bg-fog { inset: -18%; z-index: 0; }
-.bg-fog::before, .bg-fog::after {
-  content: '';
-  position: absolute;
-  width: 62vw;
-  height: 62vw;
-  border-radius: 50%;
-  filter: blur(80px);
+/* 夜色花树照片：外层容器由 JS 驱动鼠标视差（反向平滑漂移），
+   内层 img 跑 Ken Burns 缓慢推拉，两层 transform 互不干扰 */
+.bg-photo { inset: -3%; z-index: 0; will-change: transform; }
+.bg-photo img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: center;
+  animation: ken-burns 42s ease-in-out infinite alternate;
   will-change: transform;
 }
-.bg-fog::before {
-  background: radial-gradient(circle, rgba(29, 223, 255, .11), transparent 65%);
-  top: -12%; left: -8%;
-  animation: fog-drift-a 26s ease-in-out infinite alternate;
-}
-.bg-fog::after {
-  background: radial-gradient(circle, rgba(139, 124, 255, .1), transparent 65%);
-  bottom: -16%; right: -10%;
-  animation: fog-drift-b 34s ease-in-out infinite alternate;
+
+@keyframes ken-burns {
+  from { transform: scale(1) translate(0%, 0%); }
+  to   { transform: scale(1.07) translate(-1.4%, -1.8%); }
 }
 
-@keyframes fog-drift-a {
-  from { transform: translate(0, 0) scale(1); }
-  to { transform: translate(6vw, 4vh) scale(1.14); }
-}
-@keyframes fog-drift-b {
-  from { transform: translate(0, 0) scale(1.06); }
-  to { transform: translate(-5vw, -6vh) scale(1); }
+/* 蓝色调半透明压暗，让照片沉下去、玻璃层更突出 */
+.bg-tint {
+  inset: 0;
+  z-index: 1;
+  background:
+    linear-gradient(180deg, rgba(10, 22, 40, .42) 0%, rgba(7, 12, 24, .55) 100%),
+    rgba(20, 40, 80, .18);
 }
 
-#particleCanvas { inset: 0; z-index: 1; width: 100%; height: 100%; }
+/* 中央蓝色光晕：6.5s 呼吸（opacity + scale） */
+.bg-glow {
+  top: 50%;
+  left: 50%;
+  width: 68vw;
+  height: 68vw;
+  max-width: 980px;
+  max-height: 980px;
+  z-index: 2;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(56, 130, 246, .22) 0%, rgba(37, 99, 235, .12) 38%, transparent 68%);
+  filter: blur(28px);
+  animation: bg-glow-breathe 6.5s ease-in-out infinite;
+}
+
+@keyframes bg-glow-breathe {
+  0%, 100% { opacity: .55; transform: translate(-50%, -50%) scale(1); }
+  50%      { opacity: 1;   transform: translate(-50%, -50%) scale(1.12); }
+}
+
+#particleCanvas { inset: 0; z-index: 3; width: 100%; height: 100%; }
 
 .bg-vignette {
   inset: 0;
@@ -104,12 +121,10 @@ input, select, textarea { font-family: inherit; font-size: inherit; color: inher
   background: radial-gradient(120% 92% at 50% 38%, transparent 54%, rgba(0, 0, 0, .45) 100%);
 }
 
-.bg-grain {
-  inset: 0;
-  z-index: 3;
-  opacity: .05;
-  mix-blend-mode: overlay;
-  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='160' height='160' filter='url(%23n)' opacity='.6'/%3E%3C/svg%3E");
+/* 尊重系统"减弱动态效果"：静态背景，粒子由 JS 侧同样开关 */
+@media (prefers-reduced-motion: reduce) {
+  .bg-photo img,
+  .bg-glow { animation: none; }
 }
 
 /* ============================ 通用动效 ============================ */

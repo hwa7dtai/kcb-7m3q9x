@@ -61,6 +61,15 @@ JSDOM.fromFile(FILE, {
   check('周次标题已渲染', /第 \d+ 周/.test($('#weekTitle').textContent), $('#weekTitle').textContent.trim());
   check('日期表头非空', $$('.head-date').some(e => e.textContent.trim().length > 0));
   check('氛围粒子画布已挂载', !!$('#particleCanvas'));
+  check('动态背景照片层已挂载且指向夜色花树', (() => {
+    const img = $('.bg-photo img');
+    return !!img && img.getAttribute('src') === 'assets/night-blossom.jpg'
+      && fs.existsSync(path.join(__dirname, '..', 'assets', 'night-blossom.jpg'));
+  })(), $('.bg-photo img') && $('.bg-photo img').getAttribute('src'));
+  check('氛围层齐全（压暗 / 光晕 / 暗角）',
+    !!$('.bg-tint') && !!$('.bg-glow') && !!$('.bg-vignette'));
+  check('旧背景层（雾气 / 颗粒）已移除',
+    $$('.bg-fog').length === 0 && $$('.bg-grain').length === 0);
   check('导航滑动指示器存在', !!$('#navIndicator'));
 
   /* 3.8 PWA 基建（manifest / 图标 / Service Worker / 移动端 meta） */
@@ -77,6 +86,11 @@ JSDOM.fromFile(FILE, {
     ['icons/icon-192.png', 'icons/icon-512.png', 'icons/icon-maskable-512.png', 'icons/apple-touch-icon.png']
       .every(f => fs.existsSync(path.join(DEMO, f))));
   check('Service Worker 脚本存在', fs.existsSync(path.join(DEMO, 'sw.js')));
+  check('Service Worker 缓存背景照片', (() => {
+    try {
+      return fs.readFileSync(path.join(DEMO, 'sw.js'), 'utf8').includes('assets/night-blossom.jpg');
+    } catch (e) { return false; }
+  })());
   check('主题色与 Apple 移动端 meta 齐全',
     !!$('meta[name="theme-color"]') && !!$('meta[name="apple-mobile-web-app-capable"]') &&
     !!$('link[rel="apple-touch-icon"]'));

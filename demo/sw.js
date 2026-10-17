@@ -1,7 +1,7 @@
 /* 课程表 Demo · Service Worker
    策略：应用外壳缓存优先（cache-first），保证离线可用；
    导航请求统一回退到 index.html。 */
-var CACHE = 'schedule-demo-v1';
+var CACHE = 'schedule-demo-v2';
 var ASSETS = [
   './',
   './index.html',
@@ -9,6 +9,7 @@ var ASSETS = [
   './js/store.js',
   './js/app.js',
   './js/particles.js',
+  './assets/night-blossom.jpg',
   './manifest.webmanifest',
   './icons/icon-192.png',
   './icons/icon-512.png',
