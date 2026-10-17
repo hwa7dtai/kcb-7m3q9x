@@ -698,6 +698,19 @@ input, select, textarea { font-family: inherit; font-size: inherit; color: inher
   flex-wrap: wrap;
 }
 
+/* 数据管理组（重置 / 清空）：靠右，与增改操作加分隔线 */
+.toolbar-danger {
+  margin-left: auto;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding-left: 12px;
+  border-left: 1px solid var(--line);
+}
+
+.toolbar-danger .btn { color: var(--text-muted); }
+.toolbar-danger .btn:hover { color: var(--text); }
+
 .search-box {
   position: relative;
   flex: 1;

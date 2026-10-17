@@ -205,11 +205,17 @@
     }
     var nowPeriod = todayCol ? currentPeriodIndex() : 0;
 
-    var html = '<div class="schedule-grid"><div class="grid-corner"><span>时间</span></div>';
+    /* 注意：grid 内所有元素必须显式指定 grid-column/grid-row。
+       课程块是显式定位的，若 period/cell 依赖自动排布，自动布局会
+       "绕过"被课程块占用的格子，导致节次标签和空格子整体窜到别的
+       日期列（表现为左侧时间列缺行、课表区浮出零散时间标签）。 */
+    var html = '<div class="schedule-grid">' +
+      '<div class="grid-corner" style="grid-column:1;grid-row:1"><span>时间</span></div>';
 
     for (var d = 1; d <= 7; d++) {
       var isToday = d === todayCol;
-      html += '<div class="grid-head' + (isToday ? ' is-today' : '') + (d === 7 ? ' is-last' : '') + '">' +
+      html += '<div class="grid-head' + (isToday ? ' is-today' : '') + (d === 7 ? ' is-last' : '') +
+        '" style="grid-column:' + (d + 1) + ';grid-row:1">' +
         esc(s.weekdayLabels[d - 1]) +
         '<span class="head-date">' + esc(dates[d - 1] ? dates[d - 1].label : '') + '</span>' +
         (isToday ? '<span class="head-today">今天</span>' : '') + '</div>';
@@ -217,14 +223,16 @@
 
     for (var p = 1; p <= s.totalPeriods; p++) {
       var t = s.periodTimes[p - 1];
-      html += '<div class="grid-period' + (p === nowPeriod ? ' is-now' : '') + (p % 4 === 0 ? ' is-slot-end' : '') + '">' +
+      html += '<div class="grid-period' + (p === nowPeriod ? ' is-now' : '') + (p % 4 === 0 ? ' is-slot-end' : '') +
+        '" style="grid-column:1;grid-row:' + (p + 1) + '">' +
         '<span class="period-time">' + esc(t ? t.start : '') + '</span>' +
         '<span class="period-no">第 ' + p + ' 节</span></div>';
       for (var d2 = 1; d2 <= 7; d2++) {
         html += '<div class="grid-cell' + (d2 === 7 ? ' is-row-end' : '') +
           (d2 >= 6 ? ' col-weekend' : '') +
           (p % 4 === 0 ? ' is-slot-end' : '') +
-          (d2 === todayCol ? ' is-today-col' : '') + '"></div>';
+          (d2 === todayCol ? ' is-today-col' : '') +
+          '" style="grid-column:' + (d2 + 1) + ';grid-row:' + (p + 1) + '"></div>';
       }
     }
 

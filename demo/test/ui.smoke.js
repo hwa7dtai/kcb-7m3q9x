@@ -75,6 +75,31 @@ JSDOM.fromFile(FILE, {
     !!$('.grid-corner') && $('.grid-corner').textContent.indexOf('时间') !== -1,
     $('.grid-corner') && $('.grid-corner').textContent.trim());
 
+  /* 3.6 网格显式定位回归：课程块为显式定位，若 period/cell 依赖自动排布，
+     自动布局会绕过被占用格子，导致节次标签与空格子窜到其他日期列 */
+  const gridPeriods = $$('.grid-period');
+  const gridCells = $$('.grid-cell');
+  const gridHeads = $$('.grid-head');
+  check('课表空格子数量为 12 节 × 7 天', gridCells.length === 84, gridCells.length);
+  check('节次标签全部显式钉在第 1 列且行号连续',
+    gridPeriods.every((e, i) => e.style.gridColumn === '1' && e.style.gridRow === String(i + 2)),
+    gridPeriods.map(e => e.style.gridColumn + '/' + e.style.gridRow).join(' '));
+  check('空格子全部显式定位（列 1-8、行号非空）',
+    gridCells.every(e => /^[1-8]$/.test(e.style.gridColumn) && /^\d+$/.test(e.style.gridRow)),
+    '未显式定位数量：' + gridCells.filter(e => !e.style.gridColumn || !e.style.gridRow).length);
+  check('日期表头全部显式位于第 1 行',
+    gridHeads.every((e, i) => e.style.gridRow === '1' && e.style.gridColumn === String(i + 2)),
+    gridHeads.map(e => e.style.gridColumn + '/' + e.style.gridRow).join(' '));
+  check('左上角“时间”轴显式位于 (1,1)',
+    !!$('.grid-corner') && $('.grid-corner').style.gridColumn === '1' && $('.grid-corner').style.gridRow === '1');
+
+  /* 3.7 重置 / 清空入口应位于课程管理板块，而非顶部栏 */
+  check('重置数据按钮位于课程管理板块',
+    !!$('#view-courses #btnReset') && !$('.app-header #btnReset'));
+  check('清空课程按钮位于课程管理板块',
+    !!$('#view-courses #btnClear') && !$('.app-header #btnClear'));
+  check('数据管理按钮组存在', !!$('#view-courses .toolbar-danger'));
+
   /* 3.5 今天高亮（仅当本周包含今天时断言，保证测试长期稳定） */
   const todayHeads = $$('.grid-head.is-today');
   check('今天列最多高亮一列', todayHeads.length <= 1, todayHeads.length);
