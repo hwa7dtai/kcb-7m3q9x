@@ -57,6 +57,7 @@ JSDOM.fromFile(FILE, {
   check('课表渲染出课程色块', blocks.length > 0, blocks.length);
   check('表头渲染 7 天', $$('.grid-head').length === 7, $$('.grid-head').length);
   check('学期信息已填充', $('#brandSemester').textContent !== '加载中…', $('#brandSemester').textContent);
+  check('左上角品牌图标与标题已移除', $$('.brand-logo').length === 0 && !$('.brand').textContent.includes('课程表'));
   check('周次标题已渲染', /第 \d+ 周/.test($('#weekTitle').textContent), $('#weekTitle').textContent.trim());
   check('日期表头非空', $$('.head-date').some(e => e.textContent.trim().length > 0));
   check('氛围粒子画布已挂载', !!$('#particleCanvas'));
@@ -247,6 +248,9 @@ JSDOM.fromFile(FILE, {
   await wait(500);
   check('读取中显示加载步骤',
     !!$('.imp-steps') && $('.imp-steps').textContent.indexOf('读取课表') !== -1);
+  check('读取中展示液态光球与环绕卫星',
+    !!$('.imp-orb') && !!$('.imp-orb .imp-orbit'));
+  check('步骤切换有过渡动画容器', !!$('#importBody .import-step'));
 
   await wait(1800);
   const importItems = $$('#importBody .import-item');

@@ -119,6 +119,13 @@ input, select, textarea { font-family: inherit; font-size: inherit; color: inher
   to { opacity: 1; transform: none; }
 }
 
+/* 液态玻璃入场：缩放回弹 + 去模糊（注意用 backwards 填充，
+   若用 both/forwards，动画结束后的 transform 会覆盖 :hover 的位移） */
+@keyframes glass-in {
+  from { opacity: 0; transform: translateY(12px) scale(.88); filter: blur(10px); }
+  to { opacity: 1; transform: none; filter: blur(0); }
+}
+
 @keyframes trace-h { to { background-size: 100% 1.5px, 100% 1.5px; } }
 @keyframes trace-v { to { background-size: 1.5px 100%, 1.5px 100%; } }
 
@@ -180,35 +187,18 @@ input, select, textarea { font-family: inherit; font-size: inherit; color: inher
   flex-wrap: wrap;
 }
 
+/* 左上角仅保留学期信息（品牌图标与标题已按反馈移除） */
 .brand {
   display: flex;
   align-items: center;
-  gap: 10px;
-  font-weight: 600;
-  font-size: 15px;
-  letter-spacing: .2px;
 }
 
-.brand-logo {
-  width: 30px;
-  height: 30px;
-  border-radius: 9px;
-  background: linear-gradient(135deg, var(--accent), var(--accent-deep));
-  color: #04222b;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 13px;
-  font-weight: 700;
-  box-shadow: 0 0 18px -2px var(--accent-glow);
-}
-
-.brand-sub {
+.semester-label {
   color: var(--text-faint);
   font-weight: 400;
-  font-size: 12px;
-  padding-left: 10px;
-  border-left: 1px solid var(--line);
+  font-size: 12.5px;
+  letter-spacing: .3px;
+  white-space: nowrap;
 }
 
 /* 分段导航（带滑动指示器） */
@@ -619,34 +609,84 @@ input, select, textarea { font-family: inherit; font-size: inherit; color: inher
 .grid-cell.is-today-col { background: rgba(29, 223, 255, .045); }
 .grid-cell.is-today-col.col-weekend { background: rgba(29, 223, 255, .06); }
 
-/* ---------- 课程色块 ---------- */
+/* ---------- 课程色块（苹果液态玻璃） ---------- */
 
 .course-block {
+  position: relative;
   margin: 3px;
   padding: 7px 9px;
-  border-radius: var(--radius-sm);
-  background: var(--cb-bg);
-  border: 1px solid var(--cb-line);
-  border-left: 3px solid var(--cb);
+  border-radius: var(--radius);
+  /* 玻璃材质：顶部受光渐变 + 课程色着色，底层格子经模糊折射 */
+  background:
+    linear-gradient(155deg,
+      rgba(255, 255, 255, .13) 0%,
+      rgba(255, 255, 255, .03) 36%,
+      rgba(255, 255, 255, 0) 64%),
+    var(--cb-bg);
+  -webkit-backdrop-filter: blur(10px) saturate(1.7);
+  backdrop-filter: blur(10px) saturate(1.7);
   color: var(--cb-text);
   overflow: hidden;
   text-align: left;
   display: flex;
   flex-direction: column;
   gap: 2px;
-  transition: transform .18s var(--ease-out), box-shadow .18s, border-color .18s, filter .18s;
+  transition: transform .24s var(--ease-spring), box-shadow .24s var(--ease-out);
   min-width: 0;
-  animation: rise-in .5s var(--ease-out) both;
+  animation: glass-in .55s var(--ease-spring) backwards;
   cursor: pointer;
+  isolation: isolate;
 }
 
+/* 文字层置于高光之上 */
+.course-block > * { position: relative; z-index: 1; }
+
+/* 镜面边缘高光（液态玻璃的"描边"）：左上受光，右下渐隐为课程色 */
+.course-block::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  padding: 1px;
+  background: linear-gradient(150deg,
+    rgba(255, 255, 255, .62) 0%,
+    rgba(255, 255, 255, .12) 26%,
+    rgba(255, 255, 255, 0) 58%,
+    var(--cb-line) 100%);
+  -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+  -webkit-mask-composite: xor;
+  mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+  mask-composite: exclude;
+  pointer-events: none;
+  z-index: 2;
+}
+
+/* 指针跟随的液态高光（--lg-x / --lg-y 由 JS 写入） */
+.course-block::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  background: radial-gradient(110px circle at var(--lg-x, 50%) var(--lg-y, 50%),
+    rgba(255, 255, 255, .26), rgba(255, 255, 255, .05) 45%, transparent 72%);
+  opacity: 0;
+  transition: opacity .3s var(--ease-out);
+  pointer-events: none;
+  z-index: 0;
+}
+
+.course-block:hover::before { opacity: 1; }
+
 .course-block:hover {
-  transform: translateY(-2px);
-  border-color: var(--cb);
-  box-shadow: 0 10px 28px -10px var(--cb), 0 0 0 1px var(--cb-line);
-  filter: brightness(1.08);
+  transform: translateY(-3px) scale(1.015);
+  box-shadow:
+    0 16px 36px -14px rgba(0, 0, 0, .66),
+    0 0 26px -8px var(--cb),
+    inset 0 1px 0 rgba(255, 255, 255, .28);
   z-index: 4;
 }
+
+.course-block:active { transform: translateY(-1px) scale(.98); }
 
 .course-block .cb-name {
   font-weight: 600;
@@ -1003,18 +1043,67 @@ input, select, textarea { font-family: inherit; font-size: inherit; color: inher
   margin-bottom: 16px;
 }
 
-.import-loading { padding: 30px 8px 22px; text-align: center; }
+/* 步骤切换过渡：三步向导每次换页都是一次"液态"浮现 */
+.import-step { animation: step-in .42s var(--ease-spring) both; }
 
-.imp-spinner {
-  width: 34px;
-  height: 34px;
-  margin: 0 auto 20px;
-  border: 3px solid var(--line);
-  border-top-color: var(--accent);
-  border-radius: 50%;
-  animation: imp-spin .8s linear infinite;
-  box-shadow: 0 0 20px -4px var(--accent-glow);
+@keyframes step-in {
+  from { opacity: 0; transform: translateY(14px) scale(.98); filter: blur(6px); }
+  to { opacity: 1; transform: none; filter: blur(0); }
 }
+
+.import-loading { padding: 34px 8px 24px; text-align: center; }
+
+/* 液态光球：呼吸辉光 + 环绕卫星点 */
+.imp-orb {
+  position: relative;
+  width: 56px;
+  height: 56px;
+  margin: 0 auto 18px;
+  border-radius: 50%;
+  background: radial-gradient(circle at 32% 28%,
+    rgba(255, 255, 255, .55) 0%,
+    rgba(29, 223, 255, .2) 42%,
+    rgba(29, 223, 255, .06) 72%,
+    transparent 100%);
+  border: 1px solid rgba(255, 255, 255, .2);
+  box-shadow: 0 0 30px -6px var(--accent-glow), inset 0 0 20px rgba(29, 223, 255, .2);
+  animation: orb-breathe 2.4s ease-in-out infinite;
+}
+
+.imp-orbit {
+  position: absolute;
+  inset: -1px;
+  animation: imp-spin 1.8s linear infinite;
+}
+
+.imp-orbit::after {
+  content: '';
+  position: absolute;
+  top: -3.5px;
+  left: 50%;
+  width: 7px;
+  height: 7px;
+  margin-left: -3.5px;
+  border-radius: 50%;
+  background: var(--accent);
+  box-shadow: 0 0 12px var(--accent), 0 0 3px #fff;
+}
+
+@keyframes orb-breathe {
+  0%, 100% {
+    transform: scale(1);
+    box-shadow: 0 0 26px -8px var(--accent-glow), inset 0 0 14px rgba(29, 223, 255, .16);
+  }
+  50% {
+    transform: scale(1.07);
+    box-shadow: 0 0 44px -2px var(--accent-glow), inset 0 0 24px rgba(29, 223, 255, .28);
+  }
+}
+
+.imp-loading-text { margin: 0 0 18px; font-size: 13.5px; color: var(--text-muted); }
+.imp-loading-text i { font-style: normal; animation: imp-pulse 1.2s ease infinite; }
+.imp-loading-text i:nth-of-type(2) { animation-delay: .18s; }
+.imp-loading-text i:nth-of-type(3) { animation-delay: .36s; }
 
 .imp-steps {
   list-style: none;
@@ -1065,22 +1154,31 @@ input, select, textarea { font-family: inherit; font-size: inherit; color: inher
   gap: 10px;
   align-items: flex-start;
   border: 1px solid var(--cb-line, var(--line));
-  border-left: 3px solid var(--cb, var(--line-strong));
   border-radius: var(--radius-sm);
   padding: 10px 12px;
-  background: var(--cb-bg, var(--surface));
+  background:
+    linear-gradient(155deg, rgba(255, 255, 255, .07), rgba(255, 255, 255, .01) 45%, transparent 72%),
+    var(--cb-bg, var(--surface));
+  -webkit-backdrop-filter: blur(8px);
+  backdrop-filter: blur(8px);
   cursor: pointer;
-  transition: border-color .15s, background .15s, transform .15s var(--ease-out);
-  animation: rise-in .4s var(--ease-out) both;
+  transition: border-color .15s, background .15s, transform .18s var(--ease-spring), box-shadow .18s;
+  animation: rise-in .4s var(--ease-out) backwards;
 }
 
-.import-item:hover { transform: translateX(2px); border-color: var(--cb, var(--line-strong)); }
+.import-item:hover {
+  transform: translateX(3px);
+  border-color: var(--cb, var(--line-strong));
+  box-shadow: 0 10px 24px -12px rgba(0, 0, 0, .55), 0 0 18px -6px var(--cb, transparent);
+}
 
 .import-item.is-disabled {
   opacity: .62;
   cursor: not-allowed;
   background: var(--surface);
-  border-left-color: var(--line-strong);
+  border-color: var(--line-strong);
+  -webkit-backdrop-filter: none;
+  backdrop-filter: none;
 }
 
 .import-item input { margin-top: 3px; flex-shrink: 0; accent-color: var(--accent); }
@@ -1145,7 +1243,7 @@ input, select, textarea { font-family: inherit; font-size: inherit; color: inher
 
 @media (max-width: 760px) {
   .header-inner { padding: 10px 14px; gap: 12px; }
-  .brand-sub { display: none; }
+  .semester-label { display: none; }
   .header-actions { margin-left: 0; width: 100%; }
   .demo-tag { margin-left: auto; }
   .app-main { padding: 14px 12px 48px; }

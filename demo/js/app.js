@@ -508,13 +508,15 @@
     /* ---- 第一步：填写教务系统账号 ---- */
     if (state.importStep === 'form') {
       body.innerHTML =
+        '<div class="import-step">' +
         '<div class="import-tip">演示模式不会真正连接教务系统，读取到的是模拟数据。' +
         '正式版将按 PLAN.md 的方案自动登录教务系统并抓取课表。</div>' +
         '<div class="field"><label for="impStudent">学号</label>' +
         '<input id="impStudent" type="text" placeholder="请输入学号" autocomplete="off"></div>' +
         '<div class="field"><label for="impPassword">教务系统密码</label>' +
         '<input id="impPassword" type="password" placeholder="请输入密码" autocomplete="off"></div>' +
-        '<div class="field full"><span class="field-error" id="importError"></span></div>';
+        '<div class="field full"><span class="field-error" id="importError"></span></div>' +
+        '</div>';
 
       if (state.importForm.studentId || state.importForm.password) {
         $('#impStudent').value = state.importForm.studentId;
@@ -528,16 +530,18 @@
       return;
     }
 
-    /* ---- 第二步：读取中 ---- */
+    /* ---- 第二步：读取中（液态光球 + 环绕卫星 + 步骤点） ---- */
     if (state.importStep === 'loading') {
       body.innerHTML =
+        '<div class="import-step">' +
         '<div class="import-loading">' +
-        '<div class="imp-spinner"></div>' +
+        '<div class="imp-orb"><span class="imp-orbit"></span></div>' +
+        '<p class="imp-loading-text">正在登录并读取课表<i>.</i><i>.</i><i>.</i></p>' +
         '<ol class="imp-steps">' +
         '<li class="is-done">连接教务系统</li>' +
         '<li class="is-active">登录并读取课表…</li>' +
         '<li>解析排课数据</li>' +
-        '</ol></div>';
+        '</ol></div></div>';
       foot.innerHTML = '<button class="btn" data-close="modalImport">取消</button>';
       return;
     }
@@ -577,9 +581,11 @@
     }).join('');
 
     body.innerHTML =
+      '<div class="import-step">' +
       '<p class="import-summary">已从「' + esc(fetched.source || '教务系统') + '」读取到 <b>' + items.length +
       '</b> 门课程，其中 <b>' + okCount + '</b> 门与当前课表无冲突，勾选后即可导入。</p>' +
-      '<div class="import-list">' + listHtml + '</div>';
+      '<div class="import-list">' + listHtml + '</div>' +
+      '</div>';
 
     foot.innerHTML =
       '<button class="btn" data-close="modalImport">取消</button>' +
@@ -776,11 +782,25 @@
     });
   }
 
+  /* 液态玻璃：指针在课程块上移动时，把局部坐标写给 CSS 变量，
+     驱动 ::before 的镜面高光跟随手指/鼠标（桌面端增强，触屏自动忽略） */
+  function bindGlassSheen() {
+    document.addEventListener('pointermove', function (e) {
+      if (e.pointerType === 'touch') { return; }
+      var el = e.target && e.target.closest ? e.target.closest('.course-block') : null;
+      if (!el) { return; }
+      var r = el.getBoundingClientRect();
+      el.style.setProperty('--lg-x', (e.clientX - r.left) + 'px');
+      el.style.setProperty('--lg-y', (e.clientY - r.top) + 'px');
+    }, { passive: true });
+  }
+
   /* ============================ 启动 ============================ */
 
   function init() {
     bindEvents();
     moveNavIndicator();
+    bindGlassSheen();
     window.addEventListener('resize', moveNavIndicator);
     if (window.CourseParticles) { window.CourseParticles.init(); }
 
