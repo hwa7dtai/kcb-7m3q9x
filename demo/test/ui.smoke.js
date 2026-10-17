@@ -28,6 +28,7 @@ const vc = new VirtualConsole();
 vc.on('jsdomError', e => {
   const msg = e.message || String(e);
   if (/Could not parse CSS/.test(msg)) return; // jsdom 不解析部分现代 CSS，忽略
+  if (/HTMLCanvasElement|getContext|canvas npm package/i.test(msg)) return; // jsdom 无 canvas 包时的提示
   errors.push('jsdomError: ' + msg);
 });
 vc.on('error', (...a) => errors.push('console.error: ' + a.join(' ')));
@@ -58,6 +59,8 @@ JSDOM.fromFile(FILE, {
   check('学期信息已填充', $('#brandSemester').textContent !== '加载中…', $('#brandSemester').textContent);
   check('周次标题已渲染', /第 \d+ 周/.test($('#weekTitle').textContent), $('#weekTitle').textContent.trim());
   check('日期表头非空', $$('.head-date').some(e => e.textContent.trim().length > 0));
+  check('氛围粒子画布已挂载', !!$('#particleCanvas'));
+  check('导航滑动指示器存在', !!$('#navIndicator'));
 
   /* 3. 左侧时间列（课程时间） */
   const periodTimes = $$('.grid-period .period-time');
@@ -68,13 +71,26 @@ JSDOM.fromFile(FILE, {
     periodTimes[0] && periodTimes[0].parentNode.textContent.trim());
   check('时间列不再出现上午/下午字样',
     $$('.grid-period').every(e => e.textContent.indexOf('上午') === -1 && e.textContent.indexOf('下午') === -1));
+  check('左上角标注“时间”轴标题',
+    !!$('.grid-corner') && $('.grid-corner').textContent.indexOf('时间') !== -1,
+    $('.grid-corner') && $('.grid-corner').textContent.trim());
 
-  /* 4. 课程块含教师、地点、周次 */
+  /* 3.5 今天高亮（仅当本周包含今天时断言，保证测试长期稳定） */
+  const todayHeads = $$('.grid-head.is-today');
+  check('今天列最多高亮一列', todayHeads.length <= 1, todayHeads.length);
+  if (todayHeads.length === 1) {
+    check('今天列表头带“今天”标识', !!todayHeads[0].querySelector('.head-today'));
+    check('今天列单元格有高亮底色', $$('.grid-cell.is-today-col').length > 0);
+  }
+
+  /* 4. 课程块含教师、地点、周次、时间 */
   const firstBlock = blocks[0];
   check('课程块包含教师姓名', firstBlock && firstBlock.textContent.indexOf('李文博') !== -1,
     firstBlock && firstBlock.textContent.trim());
   check('课程块包含上课地点', firstBlock && /教学楼|信息楼|外语楼|实验楼|文科楼|田径场/.test(firstBlock.textContent));
   check('课程块包含周次信息', firstBlock && firstBlock.textContent.indexOf('第') !== -1);
+  check('课程块包含上课时间', firstBlock && /\d{2}:\d{2}-\d{2}:\d{2}/.test(firstBlock.textContent),
+    firstBlock && firstBlock.textContent.trim());
 
   /* 5. 周次切换 */
   const weekBefore = $('#weekTitle').textContent;
@@ -95,7 +111,9 @@ JSDOM.fromFile(FILE, {
 
   click($('#btnThisWeek'));
   await wait(900);
-  check('回到本周按钮生效', $('#weekTitle').textContent.indexOf('本周') !== -1, $('#weekTitle').textContent.trim());
+  check('回到本周按钮生效',
+    $('#weekTitle').textContent.indexOf('第') !== -1 && !$('#weekNowBadge').hidden && $('#btnThisWeek').disabled,
+    $('#weekTitle').textContent.trim());
 
   /* 7. 课程列表 */
   click($('.nav-btn[data-view="courses"]'));
@@ -187,6 +205,7 @@ JSDOM.fromFile(FILE, {
   check('重置后恢复 10 项', $$('.course-item').length === 10, $$('.course-item').length);
 
   /* 14. 从教务系统导入 */
+  check('导入按钮带描边绘制动效', $('#btnImport').classList.contains('btn-trace'));
   click($('#btnImport'));
   await wait(400);
   check('导入弹窗已打开', $('#modalImport').classList.contains('is-open'));

@@ -8,6 +8,12 @@
 </head>
 <body data-page-node-id="Otao7VV8zmwC9Tmjh6sB6T">
 
+<!-- 氛围背景层：雾气 / 粒子 / 暗角 / 颗粒 -->
+<div class="bg-fog" aria-hidden="true" data-page-node-id="bgFogLayer000001"></div>
+<canvas id="particleCanvas" aria-hidden="true" data-page-node-id="bgParticleCanvas01"></canvas>
+<div class="bg-vignette" aria-hidden="true" data-page-node-id="bgVignette00001"></div>
+<div class="bg-grain" aria-hidden="true" data-page-node-id="bgGrainLayer0001"></div>
+
 <header class="app-header" data-page-node-id="1S42ehyhGhQBmKV33MmfFp">
   <div class="header-inner" data-page-node-id="fzm49qNbI4InfRVOYPGLSu">
     <div class="brand" data-page-node-id="GlaxEI1vyRw5OMlrqXK1fp">
@@ -17,6 +23,7 @@
     </div>
 
     <nav class="nav" data-page-node-id="S8WxJ5w2G7n0D846ssiGxj">
+      <span class="nav-indicator" id="navIndicator" aria-hidden="true" data-page-node-id="navInd0000000001"></span>
       <button class="nav-btn is-active" data-view="schedule" data-page-node-id="3ewMV8OZwYcxDmVDUGiLKW">周课表</button>
       <button class="nav-btn" data-view="courses" data-page-node-id="gyYowkdjGzDmaEYB9liED1">课程管理</button>
     </nav>
@@ -35,13 +42,24 @@
   <section class="view is-active" id="view-schedule" data-page-node-id="BTcruy37g4JGsuVofUFDxG">
     <div class="card week-bar" data-page-node-id="bjwFRBAk1OotAPPETp734k">
       <div class="week-nav" data-page-node-id="Ocz3RRF1Vh1UR366EGQMLs">
-        <button class="btn btn-sm" id="btnPrevWeek" data-page-node-id="LYG9qA2bTfPqzANglAH6z4">上一周</button>
-        <div class="week-title" id="weekTitle" data-page-node-id="emlpS397lvW9AxwvNxeTrQ">—</div>
-        <button class="btn btn-sm" id="btnNextWeek" data-page-node-id="T2En5J69MY1uPX8bCZTRRM">下一周</button>
+        <button class="icon-btn" id="btnPrevWeek" aria-label="上一周" data-page-node-id="LYG9qA2bTfPqzANglAH6z4">
+          <svg width="15" height="15" viewBox="0 0 16 16" fill="none" aria-hidden="true">
+            <path d="M10 3L5 8l5 5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
+          </svg>
+        </button>
+        <div class="week-title" data-page-node-id="emlpS397lvW9AxwvNxeTrQ">
+          <span id="weekTitle">—</span>
+          <span class="week-badge" id="weekNowBadge" hidden data-page-node-id="weekNowBadge0001">本周</span>
+        </div>
+        <button class="icon-btn" id="btnNextWeek" aria-label="下一周" data-page-node-id="T2En5J69MY1uPX8bCZTRRM">
+          <svg width="15" height="15" viewBox="0 0 16 16" fill="none" aria-hidden="true">
+            <path d="M6 3l5 5-5 5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
+          </svg>
+        </button>
         <button class="btn btn-sm btn-ghost" id="btnThisWeek" data-page-node-id="ssObpRFGvtLbqjFLjYhDHZ">回到本周</button>
       </div>
       <div class="week-meta" data-page-node-id="kMNVy8MRr2fktGkeSNv7HL">
-        <span id="weekRange" data-page-node-id="m4NJklyvRpLB6snEpefn3s"></span>
+        <span class="week-range" id="weekRange" data-page-node-id="m4NJklyvRpLB6snEpefn3s"></span>
         <span class="badge" id="weekCount" data-page-node-id="yrt8AtbHDWaDdjcQeJnbKQ"></span>
       </div>
     </div>
@@ -61,7 +79,7 @@
         <input id="searchInput" type="text" placeholder="搜索课程名 / 教师 / 教室" autocomplete="off" data-page-node-id="AgjljNOpkGGOSTGYGn2ULZ">
       </div>
       <span class="badge" id="listCount" data-page-node-id="etN2F0ALvwMdbTbbau0GUX"></span>
-      <button class="btn" id="btnImport" data-page-node-id="i9mP0rtBtnJwxt001">从教务系统导入</button>
+      <button class="btn btn-trace" id="btnImport" data-page-node-id="i9mP0rtBtnJwxt001">从教务系统导入</button>
       <button class="btn btn-primary" id="btnAdd" data-page-node-id="N9xTRtQAmjflKIfeGv5FUE">新增课程</button>
     </div>
 
@@ -196,6 +214,7 @@
 <div class="toast-wrap" id="toastWrap" data-page-node-id="Tmlg0g5Omod1IS2NqDjIU0"></div>
 
 <script src="js/store.js"></script>
+<script src="js/particles.js"></script>
 <script src="js/app.js"></script>
 </body>
 </html>
