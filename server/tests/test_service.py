@@ -64,9 +64,9 @@ class TestCrud:
     def test_semester_shape(self):
         service = make_service()
         sem = service.get_semester()
-        assert sem["totalWeeks"] == 18
+        assert sem["totalWeeks"] == 20
         assert sem["startDate"] == "2026-09-07"
-        assert 1 <= sem["currentWeek"] <= 18
+        assert 1 <= sem["currentWeek"] <= 20
         assert len(sem["weekdayLabels"]) == 7
         assert len(sem["periodTimes"]) == 12
         assert sem["totalPeriods"] == 12
@@ -267,3 +267,39 @@ class TestTermParams:
     def test_term_params_from_semester_id(self):
         service = make_service()
         assert service._term_params() == {"xnm": "2026", "xqm": 3}
+
+
+class TestBrowserFallback:
+    """WAF 拦截程序化登录时，走已登录浏览器会话兜底（实测 gzmtu 场景）。"""
+
+    COURSE = {"name": "教务课程", "teacher": "教师", "location": "楼",
+              "credit": 2, "dayOfWeek": 6, "startPeriod": 5, "endPeriod": 6,
+              "weekRule": {"from": 1, "to": 16, "pattern": "all"}, "category": "必修"}
+
+    def test_fallback_returns_courses(self, monkeypatch):
+        adapter = FakeAdapter(failures=5, courses=[self.COURSE])
+        service = make_service(adapter=adapter)
+        monkeypatch.setattr("core.browser_fetch.fetch_raw_via_profile",
+                            lambda *a, **k: {"kbList": [{"kcmc": "教务课程"}]})
+        result = service.fetch_from_jwxt("20260001", "pass")
+        assert result["courses"]
+        assert "浏览器会话" in result["source"]
+        assert adapter.fetch_session_calls == 2  # requests 路径仍遵守重试上限
+
+    def test_fallback_unavailable_gives_actionable_error(self, monkeypatch):
+        adapter = FakeAdapter(failures=5)
+        service = make_service(adapter=adapter)
+        monkeypatch.setattr("core.browser_fetch.fetch_raw_via_profile", lambda *a, **k: None)
+        with pytest.raises(JwxtError) as exc:
+            service.fetch_from_jwxt("20260001", "pass")
+        assert "sync_from_browser" in str(exc.value)
+
+    def test_wrong_password_does_not_use_browser(self, monkeypatch):
+        adapter = FakeAdapter(login_error="用户名或密码不正确")
+        service = make_service(adapter=adapter)
+        called = []
+        monkeypatch.setattr("core.browser_fetch.fetch_raw_via_profile",
+                            lambda *a, **k: called.append(1))
+        with pytest.raises(JwxtError):
+            service.fetch_from_jwxt("20260001", "bad")
+        assert called == []  # 明确密码错误不走浏览器兜底

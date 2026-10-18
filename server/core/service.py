@@ -14,6 +14,7 @@ from adapters.base import JwxtError, LoginError
 from adapters.zf import ZhengfangAdapter
 from config import (
     JW_BASE_URL,
+    JW_KB_CANDIDATES,
     MAX_LOGIN_ATTEMPTS,
     PERIOD_TIMES,
     SEED_DEMO_DATA,
@@ -207,7 +208,14 @@ class ScheduleService:
                 logger.info("抓取失败（第 %s/%s 次）：%s", attempt, MAX_LOGIN_ATTEMPTS, exc)
 
         if courses is None:
-            raise JwxtError("未能从教务系统读取课表：{}".format(last_error))
+            # 程序化登录被 WAF 拦截时，走浏览器会话兜底（需先用勘察脚本登录过一次）
+            browser_result = self._fetch_via_browser(term)
+            if browser_result is not None:
+                return browser_result
+            raise JwxtError(
+                "未能从教务系统读取课表：{}。若教务系统开启了访问防护，请运行 "
+                "「同步课表.bat / server/scripts/sync_from_browser.py」通过浏览器会话同步。".format(last_error)
+            )
         if not courses:
             raise JwxtError("教务系统返回了课表但未解析出任何课程（接口可能改版，"
                             "请运行 server/scripts/recon_playwright.py 重新勘察）")
@@ -223,6 +231,32 @@ class ScheduleService:
             "studentId": student_id,
             "semesterName": sem["name"],
             "source": "正方教务系统（{}）".format(self.adapter.name),
+            "courses": courses,
+        }
+
+    def _fetch_via_browser(self, term: Dict) -> Optional[Dict]:
+        """浏览器会话兜底取数；不可用时返回 None（不抛错，交由上层给最终提示）。"""
+        from core import browser_fetch
+        kb_path = getattr(self.adapter, "kb_path", None)
+        try:
+            raw = browser_fetch.fetch_raw_via_profile(
+                JW_BASE_URL, [kb_path] if kb_path else JW_KB_CANDIDATES, term)
+        except Exception as exc:  # 浏览器通道异常不掩盖原始错误
+            logger.warning("浏览器通道失败：%s", exc)
+            return None
+        if raw is None:
+            return None
+        courses = self.adapter.parse(raw)
+        if not courses:
+            return None
+        from datetime import datetime
+        self.storage.set_meta("last_fetch", datetime.now().isoformat(timespec="seconds"))
+        sem = self.storage.get_semester()
+        logger.info("通过浏览器会话读取课表 %s 门", len(courses))
+        return {
+            "studentId": "",
+            "semesterName": sem["name"],
+            "source": "正方教务系统（浏览器会话）",
             "courses": courses,
         }
 

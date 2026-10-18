@@ -25,7 +25,7 @@ DEFAULT_SEMESTER = {
     "id": "2026-2027-1",
     "name": "2026—2027 学年 第一学期",
     "startDate": "2026-09-07",  # 学期第一周的周一
-    "totalWeeks": 18,
+    "totalWeeks": 20,           # 实测课表最深到第 19 周
 }
 SEMESTER_ID = os.environ.get("KCB_SEMESTER_ID", DEFAULT_SEMESTER["id"])
 SEMESTER_NAME = os.environ.get("KCB_SEMESTER_NAME", DEFAULT_SEMESTER["name"])

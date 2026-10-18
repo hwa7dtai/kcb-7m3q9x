@@ -32,6 +32,7 @@ from config import (
     REQUEST_INTERVAL,
     REQUEST_TIMEOUT,
 )
+from core.weeks import format_weeks_text, weeks_to_rule
 
 logger = logging.getLogger(__name__)
 
@@ -302,21 +303,88 @@ def parse_zcd(zcd: str) -> List[int]:
     return sorted(set(weeks))
 
 
-def parse_jcdm(jcdm, ksjc=None, jsjc=None) -> Optional[Dict]:
-    """解析节次：jcdm 形如 '0102'（起止节次）；兼容 ksjc/jsjc 字段。"""
+def parse_jcdm(jcdm, ksjc=None, jsjc=None, jcs=None) -> Optional[Dict]:
+    """解析节次，兼容多种字段风格：
+    - jcdm '0102'（四方连续编码，多数学校）
+    - jcs '1-2' / jc '1-2节'（部分学校，如 gzmtu 实测）
+    - ksjc/jsjc 分列
+    """
     try:
         if ksjc and jsjc:
             return {"startPeriod": int(ksjc), "endPeriod": int(jsjc)}
-        text = str(jcdm or "").strip()
-        m = re.match(r"^(\d{2})(\d{2})$", text)
-        if m:
-            return {"startPeriod": int(m.group(1)), "endPeriod": int(m.group(2))}
-        m = re.match(r"^(\d{2,})-(\d{2,})$", text)
-        if m:
-            return {"startPeriod": int(m.group(1)), "endPeriod": int(m.group(2))}
+        for candidate in (jcdm, jcs, ""):
+            text = str(candidate or "").strip().replace("节", "")
+            if not text:
+                continue
+            m = re.match(r"^(\d{2})(\d{2})$", text)
+            if m:
+                return {"startPeriod": int(m.group(1)), "endPeriod": int(m.group(2))}
+            m = re.match(r"^(\d{1,2})\s*-\s*(\d{1,2})$", text)
+            if m:
+                return {"startPeriod": int(m.group(1)), "endPeriod": int(m.group(2))}
     except (TypeError, ValueError):
         pass
     return None
+
+
+def _period_range(item: Dict) -> Optional[Dict]:
+    """从一条排课记录中尽力解析节次（jcs > jc > jcdm/jsjc）。"""
+    return parse_jcdm(item.get("jcdm"), item.get("ksjc"), item.get("jsjc"), item.get("jcs") or item.get("jc"))
+
+
+def _merge_same_slot(courses: List[Dict]) -> List[Dict]:
+    """合并「同课程 + 同星期 + 同节次」的多条记录（周次/教室/教师按周不同的场景）。
+
+    典型：专业导论 8 位老师各上一周、工程制图 A6-106/A6-109/A6-602 分周次。
+    合并后：周次取并集，教师/教室用「、」连接，备注记录按周明细。
+    """
+    merged: Dict[tuple, Dict] = {}
+    order: List[tuple] = []
+    for course in courses:
+        key = (course["name"], course["dayOfWeek"], course["startPeriod"], course["endPeriod"])
+        if key not in merged:
+            merged[key] = dict(course)
+            merged[key]["_parts"] = [{
+                "weeks": list(course.get("weeks") or []),
+                "teacher": course.get("teacher", ""),
+                "location": course.get("location", ""),
+            }]
+            order.append(key)
+            continue
+        target = merged[key]
+        target["_parts"].append({
+            "weeks": list(course.get("weeks") or []),
+            "teacher": course.get("teacher", ""),
+            "location": course.get("location", ""),
+        })
+        target["credit"] = max(target["credit"], course["credit"])
+
+    result: List[Dict] = []
+    for key in order:
+        course = merged[key]
+        parts = course.pop("_parts")
+        all_weeks = sorted({w for part in parts for w in part["weeks"]})
+        teachers = []
+        locations = []
+        for part in parts:
+            if part["teacher"] and part["teacher"] not in teachers:
+                teachers.append(part["teacher"])
+            if part["location"] and part["location"] not in locations:
+                locations.append(part["location"])
+        course["teacher"] = "、".join(teachers) if teachers else ""
+        course["location"] = "、".join(locations) if locations else ""
+        course["weeks"] = all_weeks
+        course["weekRule"] = weeks_to_rule(all_weeks)
+        if len(parts) > 1:
+            details = []
+            for part in parts:
+                week_text = format_weeks_text(part["weeks"]) if part["weeks"] else "—"
+                details.append("{} {} {}".format(
+                    week_text, part["teacher"] or "教师待定", part["location"] or "地点待定").strip())
+            course["note"] = "按周次安排不同：" + "；".join(details)
+        result.append(course)
+    return result
+
 
 
 def parse_zf_schedule(raw) -> List[Dict]:
@@ -344,19 +412,18 @@ def parse_zf_schedule(raw) -> List[Dict]:
         if not name:
             continue
         teacher = str(item.get("xm") or item.get("jgxx") or "").strip()
-        location = str(item.get("jsmc") or item.get("cdmc") or item.get("jxcdmcs") or "").strip()
+        location = str(item.get("cdmc") or item.get("jsmc") or item.get("jxcdmcs") or "").strip()
         day = int(item.get("xqj") or 0)
-        jcd = parse_jcdm(item.get("jcdm"), item.get("ksjc"), item.get("jsjc"))
+        jcd = _period_range(item)
         weeks = parse_zcd(item.get("zcd") or item.get("zcdmc") or "")
         if not (1 <= day <= 7) or not jcd or not weeks:
-            logger.debug("跳过无法解析的排课项：%s", {k: item.get(k) for k in ("kcmc", "xqj", "jcdm", "zcd")})
+            logger.debug("跳过无法解析的排课项：%s", {k: item.get(k) for k in ("kcmc", "xqj", "jcdm", "jcs", "zcd")})
             continue
         credit = item.get("xf") or 0
         category = str(item.get("kcxzmc") or item.get("kcxz") or "").strip() or "必修"
         note = str(item.get("bz") or "").strip()
 
         # 周次集合归约为规则；离散集合保留 weeks 显式存储
-        from core.weeks import weeks_to_rule
         rule = weeks_to_rule(weeks)
         course = {
             "name": name,
@@ -370,8 +437,7 @@ def parse_zf_schedule(raw) -> List[Dict]:
             "category": category,
             "note": note,
             "source": "jwxt",
+            "weeks": weeks,
         }
-        if rule["pattern"] == "discrete":
-            course["weeks"] = weeks
         courses.append(course)
-    return courses
+    return _merge_same_slot(courses)

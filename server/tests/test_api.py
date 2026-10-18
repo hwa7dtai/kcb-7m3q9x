@@ -40,8 +40,8 @@ class TestHealthAndSemester:
         res = client.get("/api/semester")
         data = res.get_json()
         assert res.status_code == 200
-        assert data["totalWeeks"] == 18
-        assert 1 <= data["currentWeek"] <= 18
+        assert data["totalWeeks"] == 20
+        assert 1 <= data["currentWeek"] <= 20
         assert len(data["weekdayLabels"]) == 7
         assert data["totalPeriods"] == 12
         assert len(data["periodTimes"]) == 12
