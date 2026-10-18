@@ -103,12 +103,12 @@ class TestWeekDates:
 class TestPeriodTimeRange:
     def test_periods_1_2(self):
         from config import PERIOD_TIMES
-        assert period_time_range(PERIOD_TIMES, 1, 2) == "08:00-09:40"
+        assert period_time_range(PERIOD_TIMES, 1, 2) == "08:10-10:00"
 
     def test_periods_5_8(self):
         from config import PERIOD_TIMES
-        assert period_time_range(PERIOD_TIMES, 5, 8) == "14:00-17:40"
+        assert period_time_range(PERIOD_TIMES, 5, 8) == "14:00-17:50"
 
     def test_out_of_range(self):
         from config import PERIOD_TIMES
-        assert period_time_range(PERIOD_TIMES, 1, 13) == ""
+        assert period_time_range(PERIOD_TIMES, 1, 11) == ""

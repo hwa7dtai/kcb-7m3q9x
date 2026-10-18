@@ -64,6 +64,8 @@ class Storage:
                     week_to      INTEGER NOT NULL,
                     week_pattern TEXT NOT NULL DEFAULT 'all',
                     weeks_json   TEXT,
+                    week_rooms_json   TEXT,
+                    week_teachers_json TEXT,
                     source       TEXT,
                     created_at   TEXT NOT NULL DEFAULT (datetime('now','localtime')),
                     updated_at   TEXT NOT NULL DEFAULT (datetime('now','localtime'))
@@ -75,6 +77,12 @@ class Storage:
                 );
                 """
             )
+            # 旧库补列（幂等迁移）
+            for column in ("week_rooms_json", "week_teachers_json"):
+                try:
+                    self._conn.execute("ALTER TABLE courses ADD COLUMN {} TEXT".format(column))
+                except sqlite3.OperationalError:
+                    pass
             self._conn.commit()
 
     # ------------------------------------------------------------------
@@ -107,7 +115,7 @@ class Storage:
     # ------------------------------------------------------------------
     @staticmethod
     def _row_to_course(row: sqlite3.Row) -> Dict:
-        return {
+        course = {
             "id": row["id"],
             "name": row["name"],
             "teacher": row["teacher"],
@@ -121,8 +129,14 @@ class Storage:
             "endPeriod": row["end_period"],
             "weekRule": {"from": row["week_from"], "to": row["week_to"], "pattern": row["week_pattern"]},
             "source": row["source"],
-            **({"weeks": json.loads(row["weeks_json"])} if row["weeks_json"] else {}),
         }
+        if row["weeks_json"]:
+            course["weeks"] = json.loads(row["weeks_json"])
+        if row["week_rooms_json"]:
+            course["weekRooms"] = json.loads(row["week_rooms_json"])
+        if row["week_teachers_json"]:
+            course["weekTeachers"] = json.loads(row["week_teachers_json"])
+        return course
 
     def list_courses(self, keyword: str = "") -> List[Dict]:
         with self._lock:
@@ -147,8 +161,9 @@ class Storage:
                 """INSERT INTO courses
                    (id, name, teacher, location, credit, category, color, note,
                     day_of_week, start_period, end_period,
-                    week_from, week_to, week_pattern, weeks_json, source)
-                   VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)""",
+                    week_from, week_to, week_pattern, weeks_json,
+                    week_rooms_json, week_teachers_json, source)
+                   VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)""",
                 (
                     course["id"], course["name"], course["teacher"], course["location"],
                     float(course["credit"]), course["category"], course["color"], course["note"],
@@ -156,6 +171,8 @@ class Storage:
                     int(course["weekRule"]["from"]), int(course["weekRule"]["to"]),
                     course["weekRule"]["pattern"],
                     json.dumps(course["weeks"]) if course.get("weeks") else None,
+                    json.dumps(course["weekRooms"], ensure_ascii=False) if course.get("weekRooms") else None,
+                    json.dumps(course["weekTeachers"], ensure_ascii=False) if course.get("weekTeachers") else None,
                     course.get("source"),
                 ),
             )
@@ -167,7 +184,8 @@ class Storage:
                 """UPDATE courses SET
                      name=?, teacher=?, location=?, credit=?, category=?, color=?, note=?,
                      day_of_week=?, start_period=?, end_period=?,
-                     week_from=?, week_to=?, week_pattern=?, weeks_json=?, source=?,
+                     week_from=?, week_to=?, week_pattern=?, weeks_json=?,
+                     week_rooms_json=?, week_teachers_json=?, source=?,
                      updated_at=datetime('now','localtime')
                    WHERE id=?""",
                 (
@@ -177,6 +195,8 @@ class Storage:
                     int(course["weekRule"]["from"]), int(course["weekRule"]["to"]),
                     course["weekRule"]["pattern"],
                     json.dumps(course["weeks"]) if course.get("weeks") else None,
+                    json.dumps(course["weekRooms"], ensure_ascii=False) if course.get("weekRooms") else None,
+                    json.dumps(course["weekTeachers"], ensure_ascii=False) if course.get("weekTeachers") else None,
                     course.get("source"), course_id,
                 ),
             )

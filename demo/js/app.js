@@ -238,13 +238,17 @@
 
     state.scheduleCourses.forEach(function (c, idx) {
       var span = c.endPeriod - c.startPeriod + 1;
+      /* 分周次变化的教室/教师（如工程制图按周换教室）：取当周值 */
+      var weekKey = String(state.week);
+      var location = (c.weekRooms && c.weekRooms[weekKey]) || c.location;
+      var teacher = (c.weekTeachers && c.weekTeachers[weekKey]) || c.teacher;
       html += '<button type="button" class="course-block c-' + esc(c.color) + '" ' +
         'data-id="' + esc(c.id) + '" data-action="open-course" ' +
         'style="grid-column:' + (c.dayOfWeek + 1) + ';grid-row:' + (c.startPeriod + 1) + ' / span ' + span +
         ';animation-delay:' + Math.min(idx * 45, 540) + 'ms">' +
         '<span class="cb-name">' + esc(c.name) + '</span>' +
-        '<span class="cb-meta cb-teacher">' + esc(c.teacher || '教师待定') + '</span>' +
-        '<span class="cb-meta">' + esc(c.location || '地点待定') + '</span>' +
+        '<span class="cb-meta cb-teacher">' + esc(teacher || '教师待定') + '</span>' +
+        '<span class="cb-meta">' + esc(location || '地点待定') + '</span>' +
         '<span class="cb-weeks">' + esc(c.weekText) +
         (c.timeText ? ' · <span class="cb-time">' + esc(c.timeText) + '</span>' : '') + '</span>' +
         '</button>';

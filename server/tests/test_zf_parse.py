@@ -169,3 +169,17 @@ class TestRealGzmtuSample:
     def test_max_week_reaches_19(self, real):
         all_weeks = {w for c in parse_zf_schedule(real) for w in c["weeks"]}
         assert 19 in all_weeks
+
+    def test_week_room_map_for_changing_rooms(self, real):
+        """分周次换教室：合并后仍保留每一周的实际教室，供前端按周显示。"""
+        monday = [c for c in parse_zf_schedule(real)
+                  if c["name"] == "工程制图与CAD" and c["dayOfWeek"] == 1][0]
+        assert monday["weekRooms"]["4"] != monday["weekRooms"]["5"]
+        assert monday["weekRooms"]["5"] == monday["weekRooms"]["7"]  # 5-7 周同一教室
+        assert monday["weekRooms"]["15"] != monday["weekRooms"]["4"]
+
+    def test_week_teacher_map_for_rotation(self, real):
+        intro = [c for c in parse_zf_schedule(real)
+                 if c["name"] == "专业导论"][0]
+        assert intro["weekTeachers"]["4"] != intro["weekTeachers"]["5"]
+        assert len({intro["weekTeachers"][str(w)] for w in range(4, 12)}) == 8

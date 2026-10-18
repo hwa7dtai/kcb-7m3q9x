@@ -52,6 +52,9 @@ def normalize_course(payload: Dict) -> Dict:
             "pattern": rule.get("pattern") or "all",
         },
         "source": payload.get("source"),
+        # 分周次变化的教室/教师（合并导入时由适配层生成）：{"7": "A6-109", ...}
+        "weekRooms": payload.get("weekRooms") or None,
+        "weekTeachers": payload.get("weekTeachers") or None,
     }
 
 

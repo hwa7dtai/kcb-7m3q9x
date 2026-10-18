@@ -40,19 +40,19 @@ class TestHealthAndSemester:
         res = client.get("/api/semester")
         data = res.get_json()
         assert res.status_code == 200
-        assert data["totalWeeks"] == 20
-        assert 1 <= data["currentWeek"] <= 20
+        assert data["totalWeeks"] == 19
+        assert 1 <= data["currentWeek"] <= 19
         assert len(data["weekdayLabels"]) == 7
-        assert data["totalPeriods"] == 12
-        assert len(data["periodTimes"]) == 12
-        assert data["periodTimes"][0] == {"start": "08:00", "end": "08:45"}
+        assert data["totalPeriods"] == 10
+        assert len(data["periodTimes"]) == 10
+        assert data["periodTimes"][0] == {"start": "08:10", "end": "09:05"}
 
     def test_week_dates(self, client):
         res = client.get("/api/week-dates?week=1")
         dates = res.get_json()
         assert len(dates) == 7
-        assert dates[0]["iso"] == "2026-09-07"
-        assert dates[0]["label"] == "9/7"
+        assert dates[0]["iso"] == "2026-08-31"
+        assert dates[0]["label"] == "8/31"
 
 
 class TestCoursesContract:
@@ -136,10 +136,10 @@ class TestScheduleContract:
     def test_time_text_contract(self, client):
         w1 = client.get("/api/schedule?week=1").get_json()
         math = [c for c in w1["courses"] if c["name"] == "高等数学 A（上）"][0]
-        assert math["timeText"] == "08:00-09:40"
+        assert math["timeText"] == "08:10-10:00"
         w2 = client.get("/api/schedule?week=2").get_json()
         lab = [c for c in w2["courses"] if c["name"] == "计算机组成原理实验"][0]
-        assert lab["timeText"] == "14:00-17:40"
+        assert lab["timeText"] == "14:00-17:50"
 
 
 class TestImportContract:

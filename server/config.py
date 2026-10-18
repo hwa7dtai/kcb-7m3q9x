@@ -24,8 +24,8 @@ DB_PATH = os.environ.get("KCB_DB_PATH", str(DATA_DIR / "schedule.db"))
 DEFAULT_SEMESTER = {
     "id": "2026-2027-1",
     "name": "2026—2027 学年 第一学期",
-    "startDate": "2026-09-07",  # 学期第一周的周一
-    "totalWeeks": 20,           # 实测课表最深到第 19 周
+    "startDate": "2026-08-31",  # 实测：第 7 周对应 2026-10-12 ~ 10-18
+    "totalWeeks": 19,           # 实测课表最深到第 19 周
 }
 SEMESTER_ID = os.environ.get("KCB_SEMESTER_ID", DEFAULT_SEMESTER["id"])
 SEMESTER_NAME = os.environ.get("KCB_SEMESTER_NAME", DEFAULT_SEMESTER["name"])
@@ -33,23 +33,22 @@ SEMESTER_START_DATE = os.environ.get("KCB_SEMESTER_START", DEFAULT_SEMESTER["sta
 SEMESTER_TOTAL_WEEKS = int(os.environ.get("KCB_SEMESTER_WEEKS", DEFAULT_SEMESTER["totalWeeks"]))
 
 # ---------------------------------------------------------------------------
-# 节次时间表（与前端 demo 一一对应，不得单边修改）
+# 节次时间表（gzmtu 实际作息：10 节，每节 55 分钟）
+# 与前端 demo 的默认值不同，以此为准（前端从 /api/semester 读取）
 # ---------------------------------------------------------------------------
 PERIOD_TIMES = [
-    {"start": "08:00", "end": "08:45"},
-    {"start": "08:55", "end": "09:40"},
-    {"start": "10:00", "end": "10:45"},
-    {"start": "10:55", "end": "11:40"},
-    {"start": "14:00", "end": "14:45"},
-    {"start": "14:55", "end": "15:40"},
-    {"start": "16:00", "end": "16:45"},
-    {"start": "16:55", "end": "17:40"},
-    {"start": "19:00", "end": "19:45"},
-    {"start": "19:55", "end": "20:40"},
-    {"start": "21:00", "end": "21:45"},
-    {"start": "21:55", "end": "22:40"},
+    {"start": "08:10", "end": "09:05"},
+    {"start": "09:05", "end": "10:00"},
+    {"start": "10:10", "end": "11:05"},
+    {"start": "11:05", "end": "12:00"},
+    {"start": "14:00", "end": "14:55"},
+    {"start": "14:55", "end": "15:50"},
+    {"start": "16:00", "end": "16:55"},
+    {"start": "16:55", "end": "17:50"},
+    {"start": "18:40", "end": "19:35"},
+    {"start": "19:35", "end": "20:30"},
 ]
-TOTAL_PERIODS = 12
+TOTAL_PERIODS = 10
 WEEKDAY_LABELS = ["周一", "周二", "周三", "周四", "周五", "周六", "周日"]
 
 # ---------------------------------------------------------------------------

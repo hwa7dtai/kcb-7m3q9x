@@ -376,6 +376,18 @@ def _merge_same_slot(courses: List[Dict]) -> List[Dict]:
         course["weeks"] = all_weeks
         course["weekRule"] = weeks_to_rule(all_weeks)
         if len(parts) > 1:
+            week_rooms = {}
+            week_teachers = {}
+            for part in parts:
+                for w in part["weeks"]:
+                    if part["location"]:
+                        week_rooms[str(w)] = part["location"]
+                    if part["teacher"]:
+                        week_teachers[str(w)] = part["teacher"]
+            if len(set(week_rooms.values())) > 1:
+                course["weekRooms"] = week_rooms
+            if len(set(week_teachers.values())) > 1:
+                course["weekTeachers"] = week_teachers
             details = []
             for part in parts:
                 week_text = format_weeks_text(part["weeks"]) if part["weeks"] else "—"

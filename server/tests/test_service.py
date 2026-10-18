@@ -64,12 +64,12 @@ class TestCrud:
     def test_semester_shape(self):
         service = make_service()
         sem = service.get_semester()
-        assert sem["totalWeeks"] == 20
-        assert sem["startDate"] == "2026-09-07"
-        assert 1 <= sem["currentWeek"] <= 20
+        assert sem["totalWeeks"] == 19
+        assert sem["startDate"] == "2026-08-31"
+        assert 1 <= sem["currentWeek"] <= 19
         assert len(sem["weekdayLabels"]) == 7
-        assert len(sem["periodTimes"]) == 12
-        assert sem["totalPeriods"] == 12
+        assert len(sem["periodTimes"]) == 10
+        assert sem["totalPeriods"] == 10
 
     def test_create_and_conflict(self):
         service = make_service()

@@ -488,8 +488,9 @@
       var data = deepClone(db.semester);
       data.currentWeek = computeCurrentWeek();
       data.weekdayLabels = WEEKDAY_LABELS.slice();
-      data.totalPeriods = TOTAL_PERIODS;
-      data.periodTimes = deepClone(PERIOD_TIMES);
+      /* 优先使用缓存里服务端下发的作息表（不同学校节次不同） */
+      data.totalPeriods = db.semester.totalPeriods || TOTAL_PERIODS;
+      data.periodTimes = db.semester.periodTimes || deepClone(PERIOD_TIMES);
       return delay(data, 120);
     },
     getWeekDates: function (week) {

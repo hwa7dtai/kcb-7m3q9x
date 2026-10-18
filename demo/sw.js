@@ -1,7 +1,7 @@
 /* 课程表 Demo · Service Worker
    策略：应用外壳缓存优先（cache-first），保证离线可用；
    导航请求统一回退到 index.html。 */
-var CACHE = 'schedule-demo-v3';
+var CACHE = 'schedule-demo-v4';
 var ASSETS = [
   './',
   './index.html',
