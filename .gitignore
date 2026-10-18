@@ -1,0 +1,14 @@
+# 数据与缓存
+server/data/
+*.db
+
+# Python
+__pycache__/
+*.pyc
+.pytest_cache/
+
+# Node（如需本地安装 jsdom 等开发依赖）
+node_modules/
+
+# 阶段一真实勘察样本（含个人课表信息，勿提交）
+server/tests/fixtures/real_xskbcx_sample.json

@@ -509,14 +509,21 @@
     if (state.importStep === 'form') {
       body.innerHTML =
         '<div class="import-step">' +
-        '<div class="import-tip">演示模式不会真正连接教务系统，读取到的是模拟数据。' +
-        '正式版将按 PLAN.md 的方案自动登录教务系统并抓取课表。</div>' +
+        '<div class="import-tip" id="importTip"></div>' +
         '<div class="field"><label for="impStudent">学号</label>' +
         '<input id="impStudent" type="text" placeholder="请输入学号" autocomplete="off"></div>' +
         '<div class="field"><label for="impPassword">教务系统密码</label>' +
         '<input id="impPassword" type="password" placeholder="请输入密码" autocomplete="off"></div>' +
         '<div class="field full"><span class="field-error" id="importError"></span></div>' +
         '</div>';
+
+      /* 模式提示文案由数据层给出：远程模式=真实登录，本地模式=演示数据 */
+      if (typeof Store.describeMode === 'function') {
+        Store.describeMode().then(function (mode) {
+          var tip = $('#importTip');
+          if (tip) { tip.textContent = mode.importTip; }
+        });
+      }
 
       if (state.importForm.studentId || state.importForm.password) {
         $('#impStudent').value = state.importForm.studentId;

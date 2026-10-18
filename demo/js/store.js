@@ -1,18 +1,21 @@
 /**
  * 数据层：集中管理全部数据访问。
  *
- * 当前为 Mock 实现，所有方法均返回 Promise 并模拟网络延迟，
- * 因此 UI 层已经按"异步接口"的方式编写。
+ * 两种运行模式（自动探测，无需配置）：
+ *   远程模式：后端服务可达（python server/app.py 启动），全部读写走 REST API + SQLite。
+ *   本地模式：后端不可达（file:// 双击 / 手机离线 PWA），回退到内置实现：
+ *             优先读 localStorage 中上次同步的真实数据，否则用演示种子数据。
  *
- * 接入真实后端时，只需把本文件中各方法的实现替换为 fetch 调用，
- * 保持方法名与返回结构不变，UI 层无需任何改动。
+ * 两种模式对外暴露的方法名与返回结构完全一致，UI 层（app.js）无感知。
  */
 (function (global) {
   'use strict';
 
   /* ============================ 基础配置 ============================ */
 
-  var LATENCY = 260; // 模拟网络延迟（毫秒）
+  var LATENCY = 260;          // 本地模式模拟网络延迟（毫秒）
+  var CACHE_KEY = 'kcb.cache.v1'; // localStorage：上次同步的真实数据（离线兜底）
+  var API_BASE = 'api/';      // 相对路径，与页面同源
 
   var SEMESTER = {
     id: '2026-2027-1',
@@ -107,8 +110,7 @@
     }
   ];
 
-  /* ============================ 教务系统导入（Mock） ============================ */
-
+  /* ============================ 教务系统导入（本地模式模拟） ============================ */
   /* 模拟"从教务系统读到的课表"：刻意与现有课表部分冲突，用于演示冲突跳过逻辑 */
   var JWXT_MOCK_COURSES = [
     { name: '高等数学 A（上）', teacher: '李文博', location: '教学楼 A-301', credit: 4, dayOfWeek: 1, startPeriod: 1, endPeriod: 2, weekRule: { from: 1, to: 16, pattern: 'all' }, category: '必修' },
@@ -124,38 +126,8 @@
   ];
 
   var IMPORT_COLORS = ['blue', 'teal', 'amber', 'purple', 'rose', 'green', 'cyan'];
-  var importSeq = 500;
 
-  /** 把教务系统读到的原始课程规整为内部数据结构 */
-  function normalizeImported(raw, index) {
-    return {
-      name: String(raw.name || '').trim(),
-      teacher: String(raw.teacher || '').trim(),
-      location: String(raw.location || '').trim(),
-      credit: Number(raw.credit) || 0,
-      dayOfWeek: Number(raw.dayOfWeek),
-      startPeriod: Number(raw.startPeriod),
-      endPeriod: Number(raw.endPeriod),
-      weekRule: {
-        from: Number(raw.weekRule && raw.weekRule.from),
-        to: Number(raw.weekRule && raw.weekRule.to),
-        pattern: (raw.weekRule && raw.weekRule.pattern) || 'all'
-      },
-      category: raw.category || '必修',
-      color: IMPORT_COLORS[index % IMPORT_COLORS.length],
-      note: String(raw.note || '').trim(),
-      source: 'jwxt'
-    };
-  }
-
-  /* ============================ 内存数据库 ============================ */
-
-  var db = {
-    semester: SEMESTER,
-    courses: deepClone(SEED_COURSES)
-  };
-
-  var idSeq = 100;
+  /* ============================ 通用工具 ============================ */
 
   function deepClone(value) {
     return JSON.parse(JSON.stringify(value));
@@ -177,8 +149,6 @@
 
   function pad(n) { return n < 10 ? '0' + n : String(n); }
 
-  /* ============================ 工具函数 ============================ */
-
   /** 展开周次规则为具体周次数组 */
   function expandWeeks(rule) {
     var weeks = [];
@@ -194,6 +164,14 @@
     return weeks;
   }
 
+  /** 课程的具体上课周：离散集合优先，否则由规则展开 */
+  function courseWeeks(course) {
+    if (course.weeks && course.weeks.length) {
+      return course.weeks.slice();
+    }
+    return expandWeeks(course.weekRule);
+  }
+
   /** 周次规则的可读描述，如 "第 1-15 周(单周)" */
   function formatWeekRule(rule) {
     if (!rule) { return '未设置'; }
@@ -201,37 +179,287 @@
     return '第 ' + rule.from + '-' + rule.to + ' 周' + suffix;
   }
 
+  /** 具体周次集合的可读描述（离散周输出紧凑列表） */
+  function formatWeeksText(weeks) {
+    if (!weeks || !weeks.length) { return '未设置'; }
+    var uniq = weeks.slice().sort(function (a, b) { return a - b; });
+    var from = uniq[0], to = uniq[uniq.length - 1];
+    var full = []; var odd = []; var even = [];
+    for (var w = from; w <= to; w++) {
+      full.push(w);
+      if (w % 2 === 1) { odd.push(w); } else { even.push(w); }
+    }
+    var same = function (a, b) { return a.length === b.length && a.join(',') === b.join(','); };
+    if (same(uniq, full)) { return '第 ' + from + '-' + to + ' 周'; }
+    if (same(uniq, odd)) { return '第 ' + from + '-' + to + ' 周(单周)'; }
+    if (same(uniq, even)) { return '第 ' + from + '-' + to + ' 周(双周)'; }
+    return '第 ' + uniq.join(',') + ' 周';
+  }
+
   /** 起止节次对应的上课时间范围，如 "08:00-09:40" */
-  function periodTimeRange(startPeriod, endPeriod) {
-    var a = PERIOD_TIMES[startPeriod - 1];
-    var b = PERIOD_TIMES[endPeriod - 1];
+  function periodTimeRangeWith(times, startPeriod, endPeriod) {
+    var a = times && times[startPeriod - 1];
+    var b = times && times[endPeriod - 1];
     if (!a || !b) { return ''; }
     return a.start + '-' + b.end;
   }
 
-  /** 两个课程在具体周次上是否存在交集 */
-  function hasWeekOverlap(a, b) {
-    var wa = expandWeeks(a.weekRule);
-    var wb = expandWeeks(b.weekRule);
-    for (var i = 0; i < wa.length; i++) {
-      if (wb.indexOf(wa[i]) !== -1) { return true; }
-    }
-    return false;
-  }
-
   /** 同一天、时段重叠、且周次有交集，即为冲突 */
-  function findConflict(candidate, excludeId) {
-    for (var i = 0; i < db.courses.length; i++) {
-      var c = db.courses[i];
-      if (c.id === excludeId) { continue; }
+  function findConflictIn(list, candidate, excludeId) {
+    for (var i = 0; i < list.length; i++) {
+      var c = list[i];
+      if (excludeId != null && c.id === excludeId) { continue; }
       if (c.dayOfWeek !== candidate.dayOfWeek) { continue; }
       var overlapPeriod = !(candidate.endPeriod < c.startPeriod || candidate.startPeriod > c.endPeriod);
-      if (overlapPeriod && hasWeekOverlap(candidate, c)) { return c; }
+      if (!overlapPeriod) { continue; }
+      var wa = courseWeeks(candidate);
+      var wb = courseWeeks(c);
+      var hit = false;
+      for (var j = 0; j < wa.length; j++) {
+        if (wb.indexOf(wa[j]) !== -1) { hit = true; break; }
+      }
+      if (hit) { return c; }
     }
     return null;
   }
 
-  /** 按当前日期计算所处的教学周 */
+  function sortCourses(list) {
+    return list.slice().sort(function (a, b) {
+      if (a.dayOfWeek !== b.dayOfWeek) { return a.dayOfWeek - b.dayOfWeek; }
+      return a.startPeriod - b.startPeriod;
+    });
+  }
+
+  function validateWith(totalWeeks, payload) {
+    if (!payload.name || !String(payload.name).trim()) { return '课程名称不能为空'; }
+    if (!payload.teacher || !String(payload.teacher).trim()) { return '任课教师不能为空'; }
+    if (!payload.dayOfWeek || payload.dayOfWeek < 1 || payload.dayOfWeek > 7) { return '请选择正确的星期'; }
+    var sp = Number(payload.startPeriod);
+    var ep = Number(payload.endPeriod);
+    if (!isFinite(sp) || !isFinite(ep) || sp < 1 || ep > TOTAL_PERIODS || sp > ep) {
+      return '节次设置有误，需在 1-' + TOTAL_PERIODS + ' 节范围内，且开始节次不晚于结束节次';
+    }
+    var rule = payload.weekRule || {};
+    var from = Number(rule.from);
+    var to = Number(rule.to);
+    if (!isFinite(from) || !isFinite(to) || from < 1 || to > totalWeeks || from > to) {
+      return '周次设置有误，需在 1-' + totalWeeks + ' 周范围内';
+    }
+    return null;
+  }
+
+  /** 把教务系统读到的原始课程规整为内部数据结构 */
+  function normalizeImported(raw, index) {
+    var course = {
+      name: String(raw.name || '').trim(),
+      teacher: String(raw.teacher || '').trim(),
+      location: String(raw.location || '').trim(),
+      credit: Number(raw.credit) || 0,
+      dayOfWeek: Number(raw.dayOfWeek),
+      startPeriod: Number(raw.startPeriod),
+      endPeriod: Number(raw.endPeriod),
+      weekRule: {
+        from: Number(raw.weekRule && raw.weekRule.from),
+        to: Number(raw.weekRule && raw.weekRule.to),
+        pattern: (raw.weekRule && raw.weekRule.pattern) || 'all'
+      },
+      category: raw.category || '必修',
+      color: IMPORT_COLORS[index % IMPORT_COLORS.length],
+      note: String(raw.note || '').trim(),
+      source: 'jwxt'
+    };
+    if (raw.weeks && raw.weeks.length) { course.weeks = raw.weeks.slice(); }
+    return course;
+  }
+
+  /* ============================ 模式探测 ============================ */
+
+  var modePromise = null;   // Promise<boolean>：后端是否可达
+  var backendMode = null;   // 同步可读的模式状态（helpers 用）
+
+  function probeBackend() {
+    if (modePromise) { return modePromise; }
+    modePromise = new Promise(function (resolve) {
+      function settle(ok) { backendMode = ok; resolve(ok); }
+      if (typeof global.fetch !== 'function') { settle(false); return; }
+      var settled = false;
+      var timer = setTimeout(function () {
+        if (!settled) { settled = true; settle(false); }
+      }, 800);
+      global.fetch(API_BASE + 'health', { method: 'GET', cache: 'no-store' }).then(function (res) {
+        if (!settled) { settled = true; clearTimeout(timer); settle(!!(res && res.ok)); }
+      }).catch(function () {
+        if (!settled) { settled = true; clearTimeout(timer); settle(false); }
+      });
+    });
+    return modePromise;
+  }
+
+  /** 按模式路由：remoteFn / localFn 均返回 Promise */
+  function route(remoteFn, localFn) {
+    return probeBackend().then(function (remoteMode) {
+      return remoteMode ? remoteFn() : localFn();
+    });
+  }
+
+  /* ============================ 远程模式 ============================ */
+
+  var lastKnownSemester = null;  // 最近一次 getSemester 结果（helpers 用）
+  var lastKnownCourses = [];     // 最近一次完整课程列表（helpers.checkConflict 用）
+
+  function readCache() {
+    try {
+      var raw = global.localStorage && global.localStorage.getItem(CACHE_KEY);
+      if (raw) {
+        var cache = JSON.parse(raw);
+        if (cache && Array.isArray(cache.courses)) { return cache; }
+      }
+    } catch (e) { /* 缓存损坏即忽略 */ }
+    return null;
+  }
+
+  function writeCache() {
+    try {
+      if (!global.localStorage) { return; }
+      var courses = lastKnownCourses.map(function (c) {
+        var keys = ['id', 'name', 'teacher', 'location', 'credit', 'category', 'color', 'note',
+          'dayOfWeek', 'startPeriod', 'endPeriod', 'weekRule', 'weeks', 'source'];
+        var out = {};
+        keys.forEach(function (k) { if (c[k] !== undefined) { out[k] = c[k]; } });
+        return out;
+      });
+      global.localStorage.setItem(CACHE_KEY, JSON.stringify({
+        semester: lastKnownSemester || SEMESTER,
+        courses: courses
+      }));
+    } catch (e) { /* 存储不可用时忽略 */ }
+  }
+
+  function apiFetch(path, options) {
+    options = options || {};
+    if (options.body) { options.headers = { 'Content-Type': 'application/json' }; }
+    return global.fetch(API_BASE + path, options).then(function (res) {
+      return res.json().catch(function () { return {}; }).then(function (data) {
+        if (!res.ok) {
+          var err = new Error(data.error || ('请求失败 HTTP ' + res.status));
+          if (data.conflict) { err.conflict = data.conflict; }
+          throw err;
+        }
+        return data;
+      });
+    });
+  }
+
+  /** 变更后刷新本地缓存（离线兜底数据与服务器保持一致） */
+  function refreshRemoteCache() {
+    return apiFetch('courses').then(function (list) {
+      lastKnownCourses = list;
+      writeCache();
+    });
+  }
+
+  var remote = {
+    getSemester: function () {
+      return apiFetch('semester').then(function (s) {
+        lastKnownSemester = s;
+        writeCache();
+        return s;
+      });
+    },
+    getWeekDates: function (week) {
+      return apiFetch('week-dates?week=' + encodeURIComponent(week));
+    },
+    listCourses: function (params) {
+      params = params || {};
+      return apiFetch('courses?keyword=' + encodeURIComponent(params.keyword || ''))
+        .then(function (list) {
+          if (!String(params.keyword || '').trim()) {
+            lastKnownCourses = list;
+            writeCache();
+          }
+          return list;
+        });
+    },
+    getCourse: function (id) { return apiFetch('courses/' + encodeURIComponent(id)); },
+    createCourse: function (payload) {
+      return apiFetch('courses', { method: 'POST', body: JSON.stringify(payload) })
+        .then(function (created) { return refreshRemoteCache().then(function () { return created; }); });
+    },
+    updateCourse: function (id, payload) {
+      return apiFetch('courses/' + encodeURIComponent(id), { method: 'PUT', body: JSON.stringify(payload) })
+        .then(function (updated) { return refreshRemoteCache().then(function () { return updated; }); });
+    },
+    deleteCourse: function (id) {
+      return apiFetch('courses/' + encodeURIComponent(id), { method: 'DELETE' })
+        .then(function (res) { return refreshRemoteCache().then(function () { return res; }); });
+    },
+    getSchedule: function (week) { return apiFetch('schedule?week=' + encodeURIComponent(week)); },
+    fetchFromJwxt: function (params) {
+      params = params || {};
+      if (!String(params.studentId || '').trim()) { return Promise.reject(fail('请输入学号')); }
+      if (!String(params.password || '')) { return Promise.reject(fail('请输入教务系统密码')); }
+      return apiFetch('jwxt/fetch', {
+        method: 'POST',
+        body: JSON.stringify({ studentId: params.studentId, password: params.password })
+      });
+    },
+    importCourses: function (list) {
+      return apiFetch('jwxt/import', { method: 'POST', body: JSON.stringify({ courses: list || [] }) })
+        .then(function (res) { return refreshRemoteCache().then(function () { return res; }); });
+    },
+    resetDemo: function () {
+      return apiFetch('demo/reset', { method: 'POST' })
+        .then(function (res) { return refreshRemoteCache().then(function () { return res; }); });
+    },
+    clearCourses: function () {
+      return apiFetch('demo/clear', { method: 'POST' })
+        .then(function (res) { return refreshRemoteCache().then(function () { return res; }); });
+    }
+  };
+
+  /* ============================ 本地模式 ============================ */
+
+  var db = null; // 懒初始化：{ semester, courses }
+  var idSeq = 100;
+  var importSeq = 500;
+
+  function ensureLocalDb() {
+    if (db) { return; }
+    var cached = readCache();
+    if (cached && cached.courses.length) {
+      db = { semester: cached.semester || SEMESTER, courses: cached.courses };
+    } else {
+      db = { semester: deepClone(SEMESTER), courses: deepClone(SEED_COURSES) };
+    }
+  }
+
+  /** 本地模式同样持久化到 localStorage，页面刷新不丢改动 */
+  function persistAnd(value) {
+    lastKnownSemester = db.semester;
+    lastKnownCourses = db.courses;
+    writeCache();
+    return value;
+  }
+
+  function validate(payload) {
+    return validateWith(db.semester.totalWeeks, payload);
+  }
+
+  function decorate(course) {
+    var copy = deepClone(course);
+    var weeks = courseWeeks(course);
+    copy.weeks = weeks;
+    copy.weekText = formatWeeksText(weeks);
+    copy.periodText = '第 ' + course.startPeriod + '-' + course.endPeriod + ' 节';
+    copy.timeText = periodTimeRangeWith(PERIOD_TIMES, course.startPeriod, course.endPeriod);
+    copy.dayText = WEEKDAY_LABELS[course.dayOfWeek - 1] || '';
+    return copy;
+  }
+
+  function findConflict(candidate, excludeId) {
+    return findConflictIn(db.courses, candidate, excludeId);
+  }
+
   function computeCurrentWeek() {
     var start = new Date(db.semester.startDate + 'T00:00:00');
     var now = new Date();
@@ -242,7 +470,6 @@
     return week;
   }
 
-  /** 某一周中每一天对应的日期 */
   function weekDates(week) {
     var start = new Date(db.semester.startDate + 'T00:00:00');
     start.setDate(start.getDate() + (week - 1) * 7);
@@ -255,46 +482,9 @@
     return dates;
   }
 
-  function sortCourses(list) {
-    return list.slice().sort(function (a, b) {
-      if (a.dayOfWeek !== b.dayOfWeek) { return a.dayOfWeek - b.dayOfWeek; }
-      return a.startPeriod - b.startPeriod;
-    });
-  }
-
-  function decorate(course) {
-    var copy = deepClone(course);
-    copy.weeks = expandWeeks(course.weekRule);
-    copy.weekText = formatWeekRule(course.weekRule);
-    copy.periodText = '第 ' + course.startPeriod + '-' + course.endPeriod + ' 节';
-    copy.timeText = periodTimeRange(course.startPeriod, course.endPeriod);
-    copy.dayText = WEEKDAY_LABELS[course.dayOfWeek - 1] || '';
-    return copy;
-  }
-
-  function validate(payload) {
-    if (!payload.name || !String(payload.name).trim()) { return '课程名称不能为空'; }
-    if (!payload.teacher || !String(payload.teacher).trim()) { return '任课教师不能为空'; }
-    if (!payload.dayOfWeek || payload.dayOfWeek < 1 || payload.dayOfWeek > 7) { return '请选择正确的星期'; }
-    var sp = Number(payload.startPeriod);
-    var ep = Number(payload.endPeriod);
-    if (!isFinite(sp) || !isFinite(ep) || sp < 1 || ep > TOTAL_PERIODS || sp > ep) {
-      return '节次设置有误，需在 1-' + TOTAL_PERIODS + ' 节范围内，且开始节次不晚于结束节次';
-    }
-    var rule = payload.weekRule || {};
-    var from = Number(rule.from);
-    var to = Number(rule.to);
-    if (!isFinite(from) || !isFinite(to) || from < 1 || to > db.semester.totalWeeks || from > to) {
-      return '周次设置有误，需在 1-' + db.semester.totalWeeks + ' 周范围内';
-    }
-    return null;
-  }
-
-  /* ============================ 对外 API ============================ */
-
-  var api = {
-    /* ---------- 学期信息 ---------- */
+  var local = {
     getSemester: function () {
+      ensureLocalDb();
       var data = deepClone(db.semester);
       data.currentWeek = computeCurrentWeek();
       data.weekdayLabels = WEEKDAY_LABELS.slice();
@@ -302,9 +492,8 @@
       data.periodTimes = deepClone(PERIOD_TIMES);
       return delay(data, 120);
     },
-
-    /** 某一周的日期列表，用于课表表头 */
     getWeekDates: function (week) {
+      ensureLocalDb();
       var dates = weekDates(week).map(function (d) {
         return {
           iso: d.getFullYear() + '-' + pad(d.getMonth() + 1) + '-' + pad(d.getDate()),
@@ -313,9 +502,8 @@
       });
       return delay(dates, 80);
     },
-
-    /* ---------- 课程：查 ---------- */
     listCourses: function (params) {
+      ensureLocalDb();
       params = params || {};
       var keyword = String(params.keyword || '').trim().toLowerCase();
       var list = db.courses.slice();
@@ -327,15 +515,14 @@
       }
       return delay(sortCourses(list).map(decorate), LATENCY);
     },
-
     getCourse: function (id) {
+      ensureLocalDb();
       var found = db.courses.filter(function (c) { return c.id === id; })[0];
       if (!found) { return delay(fail('课程不存在或已被删除'), 120); }
       return delay(decorate(found), 120);
     },
-
-    /* ---------- 课程：增 / 改 / 删 ---------- */
     createCourse: function (payload) {
+      ensureLocalDb();
       var error = validate(payload);
       if (error) { return delay(fail(error), 120); }
       var conflict = findConflict(payload, null);
@@ -350,10 +537,10 @@
       course.credit = Number(course.credit) || 0;
       course.note = String(course.note || '').trim();
       db.courses.push(course);
-      return delay(decorate(course), LATENCY);
+      return delay(decorate(persistAnd(course)), LATENCY);
     },
-
     updateCourse: function (id, payload) {
+      ensureLocalDb();
       var index = -1;
       for (var i = 0; i < db.courses.length; i++) {
         if (db.courses[i].id === id) { index = i; break; }
@@ -373,38 +560,29 @@
       updated.credit = Number(updated.credit) || 0;
       updated.note = String(updated.note || '').trim();
       db.courses[index] = updated;
-      return delay(decorate(updated), LATENCY);
+      return delay(decorate(persistAnd(updated)), LATENCY);
     },
-
     deleteCourse: function (id) {
+      ensureLocalDb();
       var index = -1;
       for (var i = 0; i < db.courses.length; i++) {
         if (db.courses[i].id === id) { index = i; break; }
       }
       if (index === -1) { return delay(fail('课程不存在或已被删除'), 120); }
       db.courses.splice(index, 1);
-      return delay({ id: id }, LATENCY);
+      return delay(persistAnd({ id: id }), LATENCY);
     },
-
-    /* ---------- 课表 ---------- */
     getSchedule: function (week) {
+      ensureLocalDb();
       var w = Number(week);
       var list = db.courses.filter(function (c) {
-        return expandWeeks(c.weekRule).indexOf(w) !== -1;
+        return courseWeeks(c).indexOf(w) !== -1;
       });
       return delay({
         week: w,
         courses: sortCourses(list).map(decorate)
       }, LATENCY);
     },
-
-    /* ---------- 从教务系统导入（Mock） ---------- */
-
-    /**
-     * 模拟"连接教务系统并读取课表"。
-     * 真实实现按 PLAN.md：requests 会话 + RSA 加密登录 + 解析课表接口，
-     * 此处仅返回模拟数据，用于演示完整导入流程。
-     */
     fetchFromJwxt: function (params) {
       params = params || {};
       var studentId = String(params.studentId || '').trim();
@@ -413,17 +591,13 @@
       if (!password) { return delay(fail('请输入教务系统密码'), 120); }
       return delay({
         studentId: studentId,
-        semesterName: SEMESTER.name,
-        source: '正方教务系统（模拟数据）',
+        semesterName: db.semester.name,
+        source: '正方教务系统（演示模拟数据）',
         courses: deepClone(JWXT_MOCK_COURSES)
       }, 1500);
     },
-
-    /**
-     * 批量导入教务系统课程：逐门做字段校验与时间冲突检测，
-     * 返回 { imported, skipped }，skip 的课程带原因，不影响其他课程导入。
-     */
     importCourses: function (list) {
+      ensureLocalDb();
       var result = { imported: [], skipped: [] };
       (list || []).forEach(function (raw, index) {
         var payload = normalizeImported(raw, index);
@@ -445,32 +619,65 @@
         db.courses.push(payload);
         result.imported.push(decorate(payload));
       });
-      return delay(result, LATENCY);
+      return delay(persistAnd(result), LATENCY);
     },
-
-    /* ---------- 演示控制（仅 Demo 使用） ---------- */
     resetDemo: function () {
+      ensureLocalDb();
       db.courses = deepClone(SEED_COURSES);
       idSeq = 100;
       importSeq = 500;
-      return delay({ total: db.courses.length }, 160);
+      return delay(persistAnd({ total: db.courses.length }), 160);
     },
-
     clearCourses: function () {
+      ensureLocalDb();
       db.courses = [];
-      return delay({ total: 0 }, 160);
+      return delay(persistAnd({ total: 0 }), 160);
+    }
+  };
+
+  /* ============================ 对外 API ============================ */
+
+  var api = {
+    getSemester: function () { return route(remote.getSemester, local.getSemester); },
+    getWeekDates: function (week) { return route(function () { return remote.getWeekDates(week); }, function () { return local.getWeekDates(week); }); },
+    listCourses: function (params) { return route(function () { return remote.listCourses(params); }, function () { return local.listCourses(params); }); },
+    getCourse: function (id) { return route(function () { return remote.getCourse(id); }, function () { return local.getCourse(id); }); },
+    createCourse: function (payload) { return route(function () { return remote.createCourse(payload); }, function () { return local.createCourse(payload); }); },
+    updateCourse: function (id, payload) { return route(function () { return remote.updateCourse(id, payload); }, function () { return local.updateCourse(id, payload); }); },
+    deleteCourse: function (id) { return route(function () { return remote.deleteCourse(id); }, function () { return local.deleteCourse(id); }); },
+    getSchedule: function (week) { return route(function () { return remote.getSchedule(week); }, function () { return local.getSchedule(week); }); },
+    fetchFromJwxt: function (params) { return route(function () { return remote.fetchFromJwxt(params); }, function () { return local.fetchFromJwxt(params); }); },
+    importCourses: function (list) { return route(function () { return remote.importCourses(list); }, function () { return local.importCourses(list); }); },
+    resetDemo: function () { return route(remote.resetDemo, local.resetDemo); },
+    clearCourses: function () { return route(remote.clearCourses, local.clearCourses); },
+
+    /** 当前模式说明（UI 提示文案用，不改交互结构） */
+    describeMode: function () {
+      return probeBackend().then(function (remoteMode) {
+        return remoteMode
+          ? { remote: true, importTip: '将自动登录教务系统并读取课表；自动重试上限 2 次，连续失败 3 次教务系统会锁号 3 分钟，请确认账号密码正确。' }
+          : { remote: false, importTip: '未连接后端服务，当前为演示模式，读取到的是模拟数据。启动后端（python server/app.py）后将自动登录真实教务系统。' };
+      });
     },
 
-    /* ---------- 供 UI 复用的纯函数 ---------- */
+    /* 供 UI 复用的纯函数（两模式通用） */
     helpers: {
       expandWeeks: expandWeeks,
       formatWeekRule: formatWeekRule,
-      periodTimeRange: periodTimeRange,
+      periodTimeRange: function (startPeriod, endPeriod) {
+        var times = (backendMode && lastKnownSemester && lastKnownSemester.periodTimes) || PERIOD_TIMES;
+        return periodTimeRangeWith(times, startPeriod, endPeriod);
+      },
       weekdayLabel: function (day) { return WEEKDAY_LABELS[day - 1] || ''; },
       /** 传入一门课（payload 结构），返回与它时间冲突的已有课程或 null */
       checkConflict: function (course) {
-        var c = findConflict(course, null);
-        return c ? { id: c.id, name: c.name } : null;
+        if (backendMode) {
+          var c = findConflictIn(lastKnownCourses, course, null);
+          return c ? { id: c.id, name: c.name } : null;
+        }
+        ensureLocalDb();
+        var found = findConflict(course, null);
+        return found ? { id: found.id, name: found.name } : null;
       }
     }
   };

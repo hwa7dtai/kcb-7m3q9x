@@ -1,23 +1,18 @@
-# 课程表工具 · 前端 Demo
+# 课程表工具 · 前端（已对接后端）
 
-一个**纯前端**的课程表产品原型：不接后端、不写服务端接口，全部数据来自内置模拟数据（mock data），增删改查只在浏览器内存中生效。
-
-视觉为**深色电影感**风格（青色高亮 + 玻璃拟态 + 氛围粒子），动效参考了一段个人主页 Hero 视频（见下文「动效设计」）。
+纯前端 PWA 课表界面（深色电影感：青色高亮 + 玻璃拟态 + 氛围粒子），通过
+`js/store.js` 数据层与后端对接。本目录可由 `python server/app.py` 直接托管。
 
 ## 运行方式
 
-两种方式任选：
+1. **完整模式（推荐）**：`python server/app.py`（或加 `--lan` 允许手机同 WiFi 访问），
+   浏览器打开 http://127.0.0.1:8080。数据走 REST API + SQLite，刷新不丢。
+2. **本地模式**：双击 `index.html` 或离线打开已安装的 PWA。
+   自动回退到本地数据层：优先使用 localStorage 中上次同步的真实课程，
+   否则使用演示种子数据。
 
-1. **直接打开**：双击 `index.html` 即可运行（无需构建、无需安装依赖）。
-2. **本地服务**（推荐，便于手机同局域网访问 / 安装 PWA）：
-
-   ```bash
-   cd demo
-   python -m http.server 8080
-   # 浏览器打开 http://localhost:8080
-   ```
-
-> 数据保存在内存中，刷新页面即恢复到初始 mock 数据，不会写入任何持久化存储。
+模式探测：页面加载时请求 `api/health`，可达即远程模式，否则本地模式。
+UI 层（app.js）两种模式完全无感。
 
 ## PWA（可安装 / 离线可用）
 
@@ -106,9 +101,9 @@ Semester { id, name, startDate, totalWeeks, currentWeek, periodTimes }
 `periodTimes` 为 12 节课各自的上下课时间（如第 1 节 08:00-08:45），
 用于课表左侧时间列、课程列表与详情中的上课时间展示。
 
-## 数据层的替换方式（重点）
+## 数据层的替换方式（已实现）
 
-所有数据访问都集中在 `js/store.js`，对外暴露的方法如下，**全部返回 Promise**：
+所有数据访问都集中在 `js/store.js`，对外暴露的方法**全部返回 Promise**：
 
 ```js
 getSemester()                 // 学期信息（含当前周、各节次上下课时间）
@@ -119,30 +114,15 @@ createCourse(payload)         // 新增
 updateCourse(id, payload)     // 更新
 deleteCourse(id)              // 删除
 getSchedule(week)             // 某一周的课表
-fetchFromJwxt({ studentId, password })   // 模拟连接教务系统读取课表
+fetchFromJwxt({ studentId, password })   // 连接教务系统读取课表
 importCourses(list)           // 批量导入，逐门校验与冲突检测，返回导入/跳过明细
+describeMode()                // 当前模式与提示文案（远程 / 本地）
 ```
 
-因此 UI 层已按「异步接口」的方式编写，**接入真实后端时只需替换 `store.js` 内部实现，UI 层无需改动**。例如：
-
-```js
-// 替换前（Mock）
-listCourses: function (params) {
-  var keyword = String(params.keyword || '').trim().toLowerCase();
-  var list = db.courses.filter(/* ... */);
-  return delay(list.map(decorate), 260);
-}
-
-// 替换后（真实接口）
-listCourses: function (params) {
-  return fetch('/api/courses?keyword=' + encodeURIComponent(params.keyword || ''))
-    .then(function (res) { return res.json(); });
-}
-```
-
-只要保持方法名与返回结构不变，`js/app.js` 一行都不用改。
-
-`resetDemo()` 与 `clearCourses()` 仅为演示空数据状态而存在，接入真实接口后可删除。
+`store.js` 内部已实现**后端优先 + 本地降级**的混合路由：后端可达时各方法为
+`fetch('/api/...')` 调用（接口契约见 `server/README.md`）；不可达时回退到
+内置实现（localStorage 缓存 + 演示种子）。方法名与返回结构不变，`js/app.js`
+除导入弹窗的模式提示文案外一行未改。
 
 ## 动效设计
 
@@ -196,10 +176,13 @@ NODE_PATH=<jsdom 所在 node_modules> node demo/test/ui.smoke.js
 
 ## 已知边界
 
-- 数据仅存于内存，刷新即重置（PWA 离线打开同样重置，不做本地持久化）
-- 「从教务系统导入」为**模拟流程**（不连接真实系统），用于演示交互与冲突处理；
-  真实抓取按 PLAN.md 的方案在阶段一/三实现
-- 未实现登录、多学期切换、课表导出（ICS/HTML）等，属于后续接入真实教务系统后的范围
+- 远程模式数据存于服务端 SQLite（`server/data/schedule.db`）；本地模式存 localStorage，
+  优先使用上次同步的真实数据；两种模式的离线改动在重新连接后端时被服务器数据覆盖
+- 「从教务系统导入」在远程模式为真实自动登录（RSA 加密、重试上限 2 次、失败提示手动登录）；
+  本地模式为演示模拟流程
+- 课表接口真实地址待阶段一勘察确认（`server/scripts/recon_playwright.py`），
+  教务系统改版时只需调整适配层 `server/adapters/zf.py`
+- 未实现多学期切换、课表导出（ICS/HTML）
 - 课表在窄屏下仍需横向滚动（已收紧时间轴与单元格宽度），未做移动端专属网格重排
 - 动效在 `prefers-reduced-motion` 下自动关闭；粒子层需要支持 canvas 的浏览器
 - PWA 安装需要 http(s) 环境；`file://` 双击打开只能查看，不能安装/离线
