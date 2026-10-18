@@ -216,6 +216,25 @@ class TestLoginFlow:
         assert "锁定" in str(exc.value)
 
 
+class TestLazySession:
+    def test_session_created_on_demand(self, monkeypatch):
+        """未注入会话时自动创建 requests.Session（修复线上 500：session=None）。"""
+        import requests
+        adapter = ZhengfangAdapter(BASE)  # 不传 session
+        assert adapter.session is None
+        sess = adapter._ensure_session()
+        assert isinstance(sess, requests.Session)
+        assert adapter._ensure_session() is sess  # 复用同一会话
+
+    def test_default_session_mimics_browser(self):
+        """默认会话携带浏览器 User-Agent（学校 WAF 会拦截 python-requests 特征）。"""
+        adapter = ZhengfangAdapter(BASE)
+        sess = adapter._ensure_session()
+        ua = sess.headers.get("User-Agent", "")
+        assert "python-requests" not in ua.lower()
+        assert "Mozilla" in ua and "Chrome" in ua
+
+
 class TestFetchSchedule:
     def test_tries_candidates_and_caches(self, adapter):
         adapter.fetch_session()

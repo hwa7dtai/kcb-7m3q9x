@@ -49,16 +49,32 @@ class ZhengfangAdapter(BaseAdapter):
     # ------------------------------------------------------------------
     # 内部工具
     # ------------------------------------------------------------------
+    def _ensure_session(self):
+        """session 惰性创建：未注入时用 requests.Session（全程单会话，Cookie 与 csrftoken 配对）。
+
+        同时伪装成浏览器访问：部分学校 WAF 会拦截非浏览器特征（实测曾出现偶发 403）。
+        """
+        if self.session is None:
+            import requests
+            self.session = requests.Session()
+            self.session.headers.update({
+                "User-Agent": ("Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
+                               "AppleWebKit/537.36 (KHTML, like Gecko) "
+                               "Chrome/130.0.0.0 Safari/537.36"),
+                "Accept": "text/html,application/xhtml+xml,application/json;q=0.9,*/*;q=0.8",
+                "Accept-Language": "zh-CN,zh;q=0.9",
+            })
+        return self.session
     def _url(self, path: str) -> str:
         return self.base_url + path
 
     def _get(self, path: str, **kwargs):
         time.sleep(REQUEST_INTERVAL)  # 请求加间隔，避免压力（PLAN.md 4.4）
-        return self.session.get(self._url(path), timeout=REQUEST_TIMEOUT, **kwargs)
+        return self._ensure_session().get(self._url(path), timeout=REQUEST_TIMEOUT, **kwargs)
 
     def _post(self, path: str, data=None, **kwargs):
         time.sleep(REQUEST_INTERVAL)
-        return self.session.post(self._url(path), data=data, timeout=REQUEST_TIMEOUT, **kwargs)
+        return self._ensure_session().post(self._url(path), data=data, timeout=REQUEST_TIMEOUT, **kwargs)
 
     @staticmethod
     def _looks_like_login_page(html: str) -> bool:
@@ -73,6 +89,12 @@ class ZhengfangAdapter(BaseAdapter):
     # ------------------------------------------------------------------
     def fetch_session(self) -> Dict:
         resp = self._get(JW_LOGIN_PATH)
+        if resp.status_code == 403:
+            raise JwxtError(
+                "教务系统拒绝访问（HTTP 403）：可能触发了防护或非校园网络，"
+                "请等一分钟再试；若持续失败，请运行 server/scripts/recon_playwright.py "
+                "用真实浏览器手动登录一次"
+            )
         if resp.status_code != 200:
             raise JwxtError("教务系统登录页不可访问（HTTP {}）".format(resp.status_code))
         token = extract_csrftoken(resp.text)
