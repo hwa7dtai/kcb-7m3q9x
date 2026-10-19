@@ -129,11 +129,12 @@ JSDOM.fromFile(FILE, {
   check('左上角“时间”轴显式位于 (1,1)',
     !!$('.grid-corner') && $('.grid-corner').style.gridColumn === '1' && $('.grid-corner').style.gridRow === '1');
 
-  /* 3.7 重置 / 清空入口应位于课程管理板块，而非顶部栏 */
-  check('重置数据按钮位于课程管理板块',
-    !!$('#view-courses #btnReset') && !$('.app-header #btnReset'));
-  check('清空课程按钮位于课程管理板块',
-    !!$('#view-courses #btnClear') && !$('.app-header #btnClear'));
+  /* 3.7 重置 / 清空入口属于课程管理（「更多」浮层；不在顶部栏）
+     浮层挂在 body 末尾以避免被卡片的 overflow 裁剪，因此用入口归属判断 */
+  check('重置数据入口属于课程管理且不在顶栏',
+    !!$('#btnReset') && !$('.app-header #btnReset') && !!$('#btnMore') && !!$('#view-courses .toolbar-danger'));
+  check('清空课程入口属于课程管理且不在顶栏',
+    !!$('#btnClear') && !$('.app-header #btnClear') && !!$('#moreMenu'));
   check('数据管理按钮组存在', !!$('#view-courses .toolbar-danger'));
 
   /* 3.5 今天高亮（仅当本周包含今天时断言，保证测试长期稳定） */
