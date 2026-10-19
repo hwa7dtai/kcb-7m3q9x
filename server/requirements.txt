@@ -2,4 +2,5 @@ flask>=3.0
 requests>=2.31
 pycryptodome>=3.20
 keyring>=25.0
+playwright>=1.45
 pytest>=8.0
