@@ -11,9 +11,15 @@ GitHub Pages
    └─ 打开即读本地缓存；点「同步最新」才联网拉 schedule.json
 ```
 
+## 已就绪的仓库
+
+- 代码仓库：https://github.com/hwa7dtai/kcb-7m3q9x
+- 站点地址：https://hwa7dtai.github.io/kcb-7m3q9x/（首次发布后生效）
+- 接下来只剩两步：填 Secrets → 点一次 Run workflow（见下文第 3、5 节）
+
 ## 一次性配置（约 5 分钟）
 
-### 1. 建仓库
+### 1. 建仓库（已完成）
 
 - 打开 https://github.com/new
 - Repository name：例如 `kcb-8f3a2c`（**随便起，别用真实姓名/学号**；越难猜越好）
