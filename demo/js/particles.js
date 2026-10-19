@@ -113,7 +113,11 @@
     var SPRITE_FIREFLY = makeSprite(48, drawFirefly);
     if (!SPRITE_PETAL || !SPRITE_SNOW || !SPRITE_STAR || !SPRITE_FIREFLY) { return null; }
 
-    var dpr = Math.min(global.devicePixelRatio || 1, 2);
+    var coarse = global.matchMedia && global.matchMedia('(pointer: coarse)').matches;
+    var lowPower = !!coarse || (navigator.hardwareConcurrency || 8) <= 4;
+    var dpr = Math.min(global.devicePixelRatio || 1, lowPower ? 1.25 : 2);
+    var fpsCap = lowPower ? 30 : 60;          // 手机上锁 30fps，明显减少发热/抽搐
+    var minFrameDelta = 1000 / fpsCap;
     var width = 0;
     var height = 0;
     var petals = [];
@@ -121,14 +125,14 @@
     var stars = [];
     var fireflies = [];
 
-    /* ---- 数量按屏幕面积自适应 ---- */
+    /* ---- 数量按屏幕面积自适应（移动端再减半） ---- */
     function targetCounts() {
-      var k = (width * height) / (BASE_W * BASE_H);
+      var k = ((width * height) / (BASE_W * BASE_H)) * (lowPower ? 0.5 : 1);
       return {
-        petals: Math.round(clamp(26 * k, 8, 40)),
-        snow: Math.round(clamp(60 * k, 18, 90)),
-        stars: Math.round(clamp(46 * k, 14, 70)),
-        fireflies: Math.round(clamp(10 * k, 3, 16))
+        petals: Math.round(clamp(26 * k, lowPower ? 6 : 8, 40)),
+        snow: Math.round(clamp(60 * k, lowPower ? 12 : 18, 90)),
+        stars: Math.round(clamp(46 * k, lowPower ? 8 : 14, 70)),
+        fireflies: Math.round(clamp(10 * k, lowPower ? 2 : 3, 16))
       };
     }
 
@@ -237,12 +241,17 @@
     /* ---- 主循环 ---- */
     var running = false;
     var rafId = null;
-    var last = 0;
+    var lastPaint = 0;
 
     function frame(ts) {
       if (!running) { return; }
-      var dt = last ? clamp((ts - last) / 16.67, 0.2, 3) : 1;   // 以 60fps 为基准
-      last = ts;
+      /* 移动端锁帧：不够一帧间隔就直接跳过绘制（继续排队下一帧） */
+      if (lastPaint && ts - lastPaint < minFrameDelta - 1) {
+        rafId = global.requestAnimationFrame(frame);
+        return;
+      }
+      var dt = lastPaint ? clamp((ts - lastPaint) / 16.67, 0.4, 3) : 1;   // 以 60fps 为基准
+      lastPaint = ts;
 
       ctx.clearRect(0, 0, width, height);
 
@@ -322,7 +331,7 @@
     function start() {
       if (running) { return; }
       running = true;
-      last = 0;
+      lastPaint = 0;
       rafId = global.requestAnimationFrame(frame);
     }
 

@@ -791,8 +791,9 @@ input, select, textarea { font-family: inherit; font-size: inherit; color: inher
   flex-wrap: wrap;
 }
 
-/* 数据管理组（重置 / 清空）：靠右，与增改操作加分隔线 */
+/* 数据管理组（更多菜单）：靠右，与增改操作加分隔线 */
 .toolbar-danger {
+  position: relative;
   margin-left: auto;
   display: flex;
   align-items: center;
@@ -801,8 +802,44 @@ input, select, textarea { font-family: inherit; font-size: inherit; color: inher
   border-left: 1px solid var(--line);
 }
 
-.toolbar-danger .btn { color: var(--text-muted); }
-.toolbar-danger .btn:hover { color: var(--text); }
+.more-menu {
+  position: absolute;
+  right: 0;
+  top: calc(100% + 8px);
+  z-index: 40;
+  min-width: 168px;
+  padding: 6px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  border-radius: 14px;
+  border: 1px solid rgba(255, 255, 255, .12);
+  background: rgba(10, 14, 20, .94);
+  -webkit-backdrop-filter: blur(18px) saturate(1.4);
+  backdrop-filter: blur(18px) saturate(1.4);
+  box-shadow: 0 20px 44px rgba(0, 0, 0, .55);
+  animation: rise-in .18s var(--ease-out);
+}
+
+.more-menu[hidden] { display: none; }
+
+.more-item {
+  display: block;
+  width: 100%;
+  padding: 10px 12px;
+  border: 0;
+  border-radius: 10px;
+  background: transparent;
+  color: var(--text-muted);
+  font-family: inherit;
+  font-size: 13px;
+  text-align: left;
+  text-decoration: none;
+  cursor: pointer;
+}
+
+.more-item:hover,
+.more-item:active { background: rgba(255, 255, 255, .07); color: var(--text); }
 
 .search-box {
   position: relative;
@@ -1301,9 +1338,13 @@ input, select, textarea { font-family: inherit; font-size: inherit; color: inher
   .demo-tag { margin-left: auto; }
   .app-main { padding: 14px 12px 48px; }
 
-  .week-bar { padding: 12px; }
-  .week-title { min-width: 108px; }
-  .week-meta { margin-left: 0; width: 100%; }
+  .week-bar { padding: 10px 12px; margin-bottom: 10px; gap: 8px 10px; }
+  .week-nav { gap: 6px; }
+  .week-title { min-width: 0; gap: 6px; }
+  #weekTitle { font-size: 17px; }
+  .week-meta { margin-left: auto; width: auto; gap: 8px; font-size: 11px; }
+  .week-range { font-size: 11px; }
+  .badge { font-size: 11px; padding: 2px 8px; }
 
   .course-item { grid-template-columns: 68px 1fr; gap: 10px; }
   .item-actions { grid-column: 1 / -1; justify-content: flex-end; }
@@ -1326,20 +1367,68 @@ input, select, textarea { font-family: inherit; font-size: inherit; color: inher
     backdrop-filter: blur(6px);
   }
 
-  /* 移动端课表收紧：更窄时间轴与单元格，减少横向滚动量 */
+  /* 移动端课表：7 天 × 10 节一屏放下（不横向滚动），只保留"课名 + 教室" */
+  .schedule-scroll { padding: 0; }
   .schedule-grid {
-    min-width: 660px;
-    grid-template-columns: 62px repeat(7, minmax(84px, 1fr));
-    grid-auto-rows: minmax(52px, auto);
+    min-width: 0;
+    width: 100%;
+    grid-template-columns: 26px repeat(7, minmax(0, 1fr));
+    grid-auto-rows: 44px;
   }
-  .grid-period .period-time { font-size: 10.5px; }
-  .grid-period .period-no { font-size: 9.5px; letter-spacing: 0; }
-  .grid-head { font-size: 12px; }
-  .grid-head .head-date { font-size: 10px; }
-  .course-block { padding: 5px 7px; }
-  .course-block .cb-name { font-size: 12px; }
-  .course-block .cb-meta { font-size: 10.5px; }
-  .course-block .cb-weeks { font-size: 9.5px; }
+  .grid-corner { font-size: 0; padding: 0; align-items: center; }
+  .grid-corner span { display: none; }
+  .grid-corner::after { content: '节'; font-size: 9px; letter-spacing: 0; }
+  .grid-head { padding: 6px 1px 5px; font-size: 10px; }
+  .grid-head .head-date { display: block; font-size: 8px; margin-top: 1px; }
+  .grid-head .head-today { display: none; }
+  .grid-period { padding: 0; justify-content: center; }
+  .grid-period .period-time { display: none; }
+  .grid-period .period-no { font-size: 8px; letter-spacing: 0; }
+  .course-block {
+    margin: 2px;
+    padding: 3px 4px;
+    border-radius: 8px;
+    gap: 1px;
+    -webkit-backdrop-filter: blur(6px);
+    backdrop-filter: blur(6px);
+  }
+  .course-block .cb-name {
+    font-size: 9.5px;
+    line-height: 1.18;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+  }
+  .course-block .cb-meta {
+    font-size: 8px;
+    line-height: 1.1;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .course-block .cb-teacher,
+  .course-block .cb-weeks { display: none; }
+
+  /* 移动端工具栏：搜索独占一行，操作收成「更多」菜单 */
+  .list-toolbar {
+    display: grid;
+    grid-template-columns: 1fr auto;
+    gap: 8px;
+    padding: 10px;
+  }
+  .list-toolbar .search-box { grid-column: 1 / -1; }
+  #listCount { grid-column: 1; grid-row: 2; align-self: center; justify-self: start; }
+  .toolbar-danger {
+    grid-column: 2;
+    grid-row: 2;
+    margin: 0;
+    padding: 0;
+    border: 0;
+    justify-self: end;
+  }
+  #btnImport { grid-column: 1; grid-row: 3; }
+  #btnAdd { grid-column: 2; grid-row: 3; }
 
   /* 触控目标放大（≥36px），兼顾拇指操作 */
   .btn { padding: 9px 15px; }

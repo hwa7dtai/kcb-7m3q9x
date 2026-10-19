@@ -133,6 +133,7 @@
       state.scheduleCourses = res.courses;
       state.loadingSchedule = false;
       renderSchedule();
+      renderWeekBar();  // 课程数角标依赖课表数据，加载后需重绘
     }).catch(function (err) {
       state.loadingSchedule = false;
       renderSchedule();
@@ -762,6 +763,30 @@
           });
         }
       });
+    });
+
+    /* 「更多」菜单：把同步/导出/恢复/重置/清空收进一个入口，保持工具栏整洁 */
+    var moreToggle = $('#btnMore');
+    var moreMenu = $('#moreMenu');
+    function closeMoreMenu() {
+      if (!moreMenu.hidden) {
+        moreMenu.hidden = true;
+        moreToggle.setAttribute('aria-expanded', 'false');
+      }
+    }
+    moreToggle.addEventListener('click', function (e) {
+      e.stopPropagation();
+      var willOpen = moreMenu.hidden;
+      moreMenu.hidden = !willOpen;
+      moreToggle.setAttribute('aria-expanded', willOpen ? 'true' : 'false');
+    });
+    document.addEventListener('click', function (e) {
+      if (moreMenu.hidden) { return; }
+      if (e.target.closest && e.target.closest('.toolbar-danger')) { return; }
+      closeMoreMenu();
+    });
+    $$('#moreMenu .more-item').forEach(function (item) {
+      item.addEventListener('click', closeMoreMenu);
     });
 
     /* 事件委托：课表块与列表项 */
