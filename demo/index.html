@@ -92,13 +92,6 @@
       <button class="btn btn-primary" id="btnAdd" data-page-node-id="N9xTRtQAmjflKIfeGv5FUE">新增课程</button>
       <div class="toolbar-danger" data-page-node-id="toolbarDangerGrp1">
         <button class="btn btn-sm" id="btnMore" aria-haspopup="true" aria-expanded="false" data-page-node-id="btnMore00000001">更多</button>
-        <div class="more-menu" id="moreMenu" hidden data-page-node-id="moreMenu000001">
-          <button type="button" class="more-item" id="btnPull" hidden data-page-node-id="btnPull00000001">同步最新</button>
-          <a class="more-item" id="btnOffline" href="api/export/offline" download="课程表离线版.html" data-offline-export>导出离线版</a>
-          <button type="button" class="more-item" id="btnRestore" data-page-node-id="btnRestore000001">恢复上次</button>
-          <button type="button" class="more-item" id="btnReset" data-page-node-id="SFpvhZFJdjqKWFfiltIaxm">重置数据</button>
-          <button type="button" class="more-item" id="btnClear" data-page-node-id="fShdYRcwKvRxG54m2vJ390">清空课程</button>
-        </div>
       </div>
     </div>
 
@@ -228,6 +221,15 @@
       <button class="btn btn-danger" id="btnConfirmOk" data-page-node-id="iwpaCGs05WGnv5rFh8iS3T">确认</button>
     </div>
   </div>
+</div>
+
+<!-- 更多操作浮层：放在 body 末尾，避免被卡片的 overflow / transform 裁剪 -->
+<div class="more-menu" id="moreMenu" hidden data-page-node-id="moreMenu000001">
+  <button type="button" class="more-item" id="btnPull" hidden data-page-node-id="btnPull00000001">同步最新</button>
+  <a class="more-item" id="btnOffline" href="api/export/offline" download="课程表离线版.html" data-offline-export>导出离线版</a>
+  <button type="button" class="more-item" id="btnRestore" data-page-node-id="btnRestore000001">恢复上次</button>
+  <button type="button" class="more-item" id="btnReset" data-page-node-id="SFpvhZFJdjqKWFfiltIaxm">重置数据</button>
+  <button type="button" class="more-item" id="btnClear" data-page-node-id="fShdYRcwKvRxG54m2vJ390">清空课程</button>
 </div>
 
 <div class="toast-wrap" id="toastWrap" data-page-node-id="Tmlg0g5Omod1IS2NqDjIU0"></div>

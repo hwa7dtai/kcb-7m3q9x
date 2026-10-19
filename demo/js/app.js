@@ -791,7 +791,7 @@
     }, { passive: true });
     document.addEventListener('click', function (e) {
       if (moreMenu.hidden) { return; }
-      if (e.target.closest && e.target.closest('.toolbar-danger')) { return; }
+      if (e.target.closest && (e.target.closest('.toolbar-danger') || e.target.closest('#moreMenu'))) { return; }
       closeMoreMenu();
     });
     $$('#moreMenu .more-item').forEach(function (item) {
