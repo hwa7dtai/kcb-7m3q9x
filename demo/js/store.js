@@ -467,7 +467,9 @@
     copy.weeks = weeks;
     copy.weekText = formatWeeksText(weeks);
     copy.periodText = '第 ' + course.startPeriod + '-' + course.endPeriod + ' 节';
-    copy.timeText = periodTimeRangeWith(PERIOD_TIMES, course.startPeriod, course.endPeriod);
+    /* 作息表以当前学期配置为准（云端/本地同步后可能是 10 节 08:10 起） */
+    var times = (db && db.semester && db.semester.periodTimes) || PERIOD_TIMES;
+    copy.timeText = periodTimeRangeWith(times, course.startPeriod, course.endPeriod);
     copy.dayText = WEEKDAY_LABELS[course.dayOfWeek - 1] || '';
     return copy;
   }

@@ -87,6 +87,7 @@ function check(name, ok, detail) {
 
   const after = await Store.listCourses({});
   check('同步后课程替换为云端数据', after.length === 2 && after.some(c => c.name === '高等数学AⅠ'), after.map(c => c.name).join(','));
+  check('上课时间使用云端作息表（10 节 08:10 起）', after[0].timeText === '08:10-09:05', after[0].timeText);
 
   const sem = await Store.getSemester();
   check('同步后学期起始日更新', sem.startDate === '2026-08-31', sem.startDate);

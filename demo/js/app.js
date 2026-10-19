@@ -720,7 +720,8 @@
       btn.textContent = '同步中…';
       Store.pullCloudSchedule().then(function (res) {
         toast('已更新 ' + res.total + ' 门课程' + (res.generatedAt ? '（' + res.generatedAt + '）' : ''), 'success');
-        return refreshAll();
+        /* 同步后学期配置（起始日/节次表）可能变化，必须重新加载再刷新视图 */
+        return loadSemester().then(refreshAll);
       }).catch(function (err) {
         toast(err.message || '同步失败', 'error');
       }).then(function () {
