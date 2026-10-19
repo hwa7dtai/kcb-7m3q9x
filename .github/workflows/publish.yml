@@ -1,0 +1,58 @@
+name: 同步课表并发布
+
+on:
+  schedule:
+    # 每天 05:30（北京时间）自动同步一次
+    - cron: '30 21 * * *'
+  workflow_dispatch: {}
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
+jobs:
+  sync-and-build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: 安装依赖
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r server/requirements.txt
+          python -m playwright install --with-deps chromium
+
+      - name: 抓取课表
+        env:
+          JWXT_SID: ${{ secrets.JWXT_SID }}
+          JWXT_PWD: ${{ secrets.JWXT_PWD }}
+        run: python server/scripts/github_sync.py
+
+      - name: 组装站点
+        run: |
+          mkdir -p public
+          cp -r demo/* public/
+          cp public-schedule.json public/schedule.json
+
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: public
+
+  deploy:
+    needs: sync-and-build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4

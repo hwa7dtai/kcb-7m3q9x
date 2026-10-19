@@ -712,6 +712,23 @@
       });
     });
 
+    /* 云端静态版：手动从网站拉取最新课表快照（写入本机存储） */
+    $('#btnPull').addEventListener('click', function () {
+      var btn = this;
+      var oldText = btn.textContent;
+      btn.disabled = true;
+      btn.textContent = '同步中…';
+      Store.pullCloudSchedule().then(function (res) {
+        toast('已更新 ' + res.total + ' 门课程' + (res.generatedAt ? '（' + res.generatedAt + '）' : ''), 'success');
+        return refreshAll();
+      }).catch(function (err) {
+        toast(err.message || '同步失败', 'error');
+      }).then(function () {
+        btn.disabled = false;
+        btn.textContent = oldText;
+      });
+    });
+
     /* 恢复清空/重置前的自动备份 */
     $('#btnRestore').addEventListener('click', function () {
       confirmDialog({
@@ -861,18 +878,30 @@
     window.addEventListener('resize', moveNavIndicator);
     if (window.CourseParticles) { window.CourseParticles.init(); }
 
-    /* 模式标识：在线 / 离线缓存 / 离线单文件；离线版隐藏导出与导入入口 */
+    /* 模式标识：在线 / 云端静态 / 离线缓存 / 离线单文件 */
+    var cloudStatic = /(^|\.)github\.io$/.test(location.hostname) ||
+                      /(^|\.)pages\.dev$/.test(location.hostname);
     if (typeof Store.describeMode === 'function') {
       Store.describeMode().then(function (mode) {
         var tag = document.getElementById('modeTag');
-        if (tag) { tag.textContent = mode.modeLabel || (mode.remote ? '在线' : '离线'); }
+        if (tag) {
+          tag.textContent = cloudStatic && !mode.remote
+            ? '云端版 · 数据存本机'
+            : (mode.modeLabel || (mode.remote ? '在线' : '离线'));
+        }
         if (!mode.remote) {
           var exp = document.querySelector('[data-offline-export]');
           if (exp) { exp.style.display = 'none'; }
         }
-        if (Store.isEmbedded) {
+        if (cloudStatic && !mode.remote) {
+          var pull = document.getElementById('btnPull');
+          if (pull) { pull.hidden = false; }
           var imp = document.getElementById('btnImport');
           if (imp) { imp.style.display = 'none'; }
+        }
+        if (Store.isEmbedded) {
+          var imp2 = document.getElementById('btnImport');
+          if (imp2) { imp2.style.display = 'none'; }
         }
       });
     }

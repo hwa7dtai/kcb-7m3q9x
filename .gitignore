@@ -12,3 +12,7 @@ node_modules/
 
 # 阶段一真实勘察样本（含个人课表信息，勿提交）
 server/tests/fixtures/real_xskbcx_sample.json
+raw-kb.json
+public-schedule.json
+server/.browser-profile/
+.venv/

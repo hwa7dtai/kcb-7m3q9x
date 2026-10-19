@@ -1,7 +1,7 @@
 {
-  "name": "课程表 · 前端 Demo",
+  "name": "课程表",
   "short_name": "课程表",
-  "description": "大学课程表查看工具 Demo：纯前端、数据仅存于内存，可安装到桌面/主屏离线使用",
+  "description": "个人课程表：本地保存，随时查看，需要时联网更新",
   "lang": "zh-CN",
   "dir": "ltr",
   "start_url": "./index.html",
@@ -10,7 +10,10 @@
   "orientation": "any",
   "background_color": "#07090d",
   "theme_color": "#07090d",
-  "categories": ["education", "productivity"],
+  "categories": [
+    "education",
+    "productivity"
+  ],
   "icons": [
     {
       "src": "icons/icon-192.png",

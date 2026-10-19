@@ -676,6 +676,33 @@
     } catch (e) { /* 忽略 */ }
   }
 
+  /** 云端静态版：从站点根目录拉取最新课表快照并写入本地（数据始终存本机） */
+  function pullCloudSchedule() {
+    if (typeof global.fetch !== 'function') {
+      return Promise.reject(fail('当前环境不支持联网更新'));
+    }
+    var url = 'schedule.json?_=' + Date.now();
+    return global.fetch(url, { cache: 'no-store' }).then(function (res) {
+      if (!res.ok) {
+        throw fail('云端还没有课表（HTTP ' + res.status + '）。请先在 GitHub Actions 里运行一次「同步课表并发布」。');
+      }
+      return res.json();
+    }).then(function (data) {
+      if (!data || !Array.isArray(data.courses)) {
+        throw fail('云端数据格式不正确');
+      }
+      ensureLocalDb();
+      if (data.semester) { db.semester = data.semester; }
+      db.courses = data.courses.map(function (c) {
+        var copy = deepClone(c);
+        if (!copy.source) { copy.source = 'cloud'; }
+        return copy;
+      });
+      persistAnd(null);
+      return { total: db.courses.length, generatedAt: data.generatedAt || '' };
+    });
+  }
+
   /* ============================ 对外 API ============================ */
 
   var api = {
@@ -694,6 +721,12 @@
     resetDemo: function () { return route(remote.resetDemo, local.resetDemo); },
     clearCourses: function () { return route(remote.clearCourses, local.clearCourses); },
     restoreBackup: function () { return route(remote.restoreBackup, local.restoreBackup); },
+
+    /** 从云端快照更新课表（静态部署时用；写入本地存储） */
+    pullCloudSchedule: function () {
+      if (EMBEDDED) { return Promise.reject(fail('离线版不支持联网更新')); }
+      return pullCloudSchedule();
+    },
 
     /** 当前模式说明（UI 提示文案用，不改交互结构） */
     describeMode: function () {

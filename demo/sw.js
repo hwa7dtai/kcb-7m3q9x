@@ -1,7 +1,7 @@
 /* 课程表 Demo · Service Worker
    策略：应用外壳缓存优先（cache-first），保证离线可用；
    导航请求统一回退到 index.html。 */
-var CACHE = 'schedule-demo-v5';
+var CACHE = 'schedule-demo-v6';
 var ASSETS = [
   './',
   './index.html',
@@ -37,6 +37,8 @@ self.addEventListener('activate', function (e) {
 
 self.addEventListener('fetch', function (e) {
   if (e.request.method !== 'GET') { return; }
+  /* 课表快照必须实时：不缓存，避免"点了同步还是旧数据" */
+  if (new URL(e.request.url).pathname.endsWith('/schedule.json')) { return; }
   e.respondWith(
     caches.match(e.request, { ignoreSearch: true }).then(function (hit) {
       if (hit) { return hit; }
