@@ -777,9 +777,18 @@
     moreToggle.addEventListener('click', function (e) {
       e.stopPropagation();
       var willOpen = moreMenu.hidden;
+      if (willOpen) {
+        /* 浮层定位：卡片有 overflow 裁剪，fixed 定位才能完整显示 */
+        var rect = moreToggle.getBoundingClientRect();
+        moreMenu.style.top = (rect.bottom + 8) + 'px';
+        moreMenu.style.right = Math.max(10, window.innerWidth - rect.right) + 'px';
+      }
       moreMenu.hidden = !willOpen;
       moreToggle.setAttribute('aria-expanded', willOpen ? 'true' : 'false');
     });
+    window.addEventListener('scroll', function () {
+      if (!moreMenu.hidden) { closeMoreMenu(); }
+    }, { passive: true });
     document.addEventListener('click', function (e) {
       if (moreMenu.hidden) { return; }
       if (e.target.closest && e.target.closest('.toolbar-danger')) { return; }
@@ -924,10 +933,14 @@
           if (pull) { pull.hidden = false; }
           var imp = document.getElementById('btnImport');
           if (imp) { imp.style.display = 'none'; }
+          var bar = document.querySelector('.list-toolbar');
+          if (bar) { bar.classList.add('no-import'); }
         }
         if (Store.isEmbedded) {
           var imp2 = document.getElementById('btnImport');
           if (imp2) { imp2.style.display = 'none'; }
+          var bar2 = document.querySelector('.list-toolbar');
+          if (bar2) { bar2.classList.add('no-import'); }
         }
       });
     }
