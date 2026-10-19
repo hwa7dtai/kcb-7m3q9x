@@ -270,36 +270,58 @@ class TestTermParams:
 
 
 class TestBrowserFallback:
-    """WAF 拦截程序化登录时，走已登录浏览器会话兜底（实测 gzmtu 场景）。"""
+    """程序化登录失败时，用真实浏览器自动登录（网页一键导入的主通道）。"""
 
     COURSE = {"name": "教务课程", "teacher": "教师", "location": "楼",
               "credit": 2, "dayOfWeek": 6, "startPeriod": 5, "endPeriod": 6,
               "weekRule": {"from": 1, "to": 16, "pattern": "all"}, "category": "必修"}
 
-    def test_fallback_returns_courses(self, monkeypatch):
+    def test_browser_login_returns_courses(self, monkeypatch):
         adapter = FakeAdapter(failures=5, courses=[self.COURSE])
         service = make_service(adapter=adapter)
-        monkeypatch.setattr("core.browser_fetch.fetch_raw_via_profile",
-                            lambda *a, **k: {"kbList": [{"kcmc": "教务课程"}]})
+        captured = {}
+
+        def fake_login(base, sid, pwd, paths, term):
+            captured.update({"sid": sid, "pwd": pwd})
+            return {"kbList": [{"kcmc": "教务课程"}]}, None
+
+        monkeypatch.setattr("core.browser_fetch.login_and_fetch", fake_login)
         result = service.fetch_from_jwxt("20260001", "pass")
         assert result["courses"]
-        assert "浏览器会话" in result["source"]
+        assert "浏览器自动登录" in result["source"]
+        assert captured["sid"] == "20260001" and captured["pwd"] == "pass"
         assert adapter.fetch_session_calls == 2  # requests 路径仍遵守重试上限
 
-    def test_fallback_unavailable_gives_actionable_error(self, monkeypatch):
+    def test_browser_wrong_password_not_retried(self, monkeypatch):
         adapter = FakeAdapter(failures=5)
         service = make_service(adapter=adapter)
-        monkeypatch.setattr("core.browser_fetch.fetch_raw_via_profile", lambda *a, **k: None)
+        calls = []
+
+        def fake_login(*args, **kwargs):
+            calls.append(1)
+            return None, "用户名或密码不正确，请核对后重试。"
+
+        monkeypatch.setattr("core.browser_fetch.login_and_fetch", fake_login)
+        with pytest.raises(JwxtError) as exc:
+            service.fetch_from_jwxt("20260001", "bad")
+        assert "密码" in str(exc.value)
+        assert len(calls) == 1  # 浏览器只尝试一次，不重试
+
+    def test_browser_unavailable_gives_actionable_error(self, monkeypatch):
+        adapter = FakeAdapter(failures=5)
+        service = make_service(adapter=adapter)
+        monkeypatch.setattr("core.browser_fetch.login_and_fetch",
+                            lambda *a, **k: (None, "登录超时"))
         with pytest.raises(JwxtError) as exc:
             service.fetch_from_jwxt("20260001", "pass")
-        assert "sync_from_browser" in str(exc.value)
+        assert "验证码" in str(exc.value) or "读取课表" in str(exc.value)
 
     def test_wrong_password_does_not_use_browser(self, monkeypatch):
         adapter = FakeAdapter(login_error="用户名或密码不正确")
         service = make_service(adapter=adapter)
         called = []
-        monkeypatch.setattr("core.browser_fetch.fetch_raw_via_profile",
+        monkeypatch.setattr("core.browser_fetch.login_and_fetch",
                             lambda *a, **k: called.append(1))
         with pytest.raises(JwxtError):
             service.fetch_from_jwxt("20260001", "bad")
-        assert called == []  # 明确密码错误不走浏览器兜底
+        assert called == []  # requests 已明确密码错误，不启动浏览器

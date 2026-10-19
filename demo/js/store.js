@@ -15,7 +15,10 @@
 
   var LATENCY = 260;          // 本地模式模拟网络延迟（毫秒）
   var CACHE_KEY = 'kcb.cache.v1'; // localStorage：上次同步的真实数据（离线兜底）
+  var BACKUP_KEY = 'kcb.backup.v1'; // 本地模式下清空/重置前的快照
   var API_BASE = 'api/';      // 相对路径，与页面同源
+  /* 离线单文件导出：服务端把课表快照内联进 HTML，此标记存在即强制本地模式 */
+  var EMBEDDED = global.__KCB_EMBEDDED__ || null;
 
   var SEMESTER = {
     id: '2026-2027-1',
@@ -279,6 +282,11 @@
 
   function probeBackend() {
     if (modePromise) { return modePromise; }
+    if (EMBEDDED) {
+      backendMode = false;
+      modePromise = Promise.resolve(false);
+      return modePromise;
+    }
     modePromise = new Promise(function (resolve) {
       function settle(ok) { backendMode = ok; resolve(ok); }
       if (typeof global.fetch !== 'function') { settle(false); return; }
@@ -414,6 +422,10 @@
     clearCourses: function () {
       return apiFetch('demo/clear', { method: 'POST' })
         .then(function (res) { return refreshRemoteCache().then(function () { return res; }); });
+    },
+    restoreBackup: function () {
+      return apiFetch('demo/restore', { method: 'POST' })
+        .then(function (res) { return refreshRemoteCache().then(function () { return res; }); });
     }
   };
 
@@ -425,6 +437,10 @@
 
   function ensureLocalDb() {
     if (db) { return; }
+    if (EMBEDDED && EMBEDDED.semester && EMBEDDED.courses) {
+      db = { semester: EMBEDDED.semester, courses: deepClone(EMBEDDED.courses) };
+      return;
+    }
     var cached = readCache();
     if (cached && cached.courses.length) {
       db = { semester: cached.semester || SEMESTER, courses: cached.courses };
@@ -624,6 +640,7 @@
     },
     resetDemo: function () {
       ensureLocalDb();
+      localBackup();
       db.courses = deepClone(SEED_COURSES);
       idSeq = 100;
       importSeq = 500;
@@ -631,14 +648,39 @@
     },
     clearCourses: function () {
       ensureLocalDb();
+      localBackup();
       db.courses = [];
       return delay(persistAnd({ total: 0 }), 160);
+    },
+    restoreBackup: function () {
+      ensureLocalDb();
+      var raw = null;
+      try {
+        raw = global.localStorage && global.localStorage.getItem(BACKUP_KEY);
+      } catch (e) { raw = null; }
+      if (!raw) { return delay(fail('没有可恢复的备份'), 120); }
+      var snapshot = JSON.parse(raw);
+      db.courses = snapshot.courses || [];
+      if (snapshot.semester) { db.semester = snapshot.semester; }
+      return delay(persistAnd({ total: db.courses.length }), 160);
     }
   };
+
+  /** 本地模式：破坏性操作前留快照（与后端行为一致） */
+  function localBackup() {
+    try {
+      if (!global.localStorage || !db.courses.length) { return; }
+      global.localStorage.setItem(BACKUP_KEY, JSON.stringify({
+        semester: db.semester, courses: db.courses
+      }));
+    } catch (e) { /* 忽略 */ }
+  }
 
   /* ============================ 对外 API ============================ */
 
   var api = {
+    /** 是否为离线单文件导出版 */
+    isEmbedded: !!EMBEDDED,
     getSemester: function () { return route(remote.getSemester, local.getSemester); },
     getWeekDates: function (week) { return route(function () { return remote.getWeekDates(week); }, function () { return local.getWeekDates(week); }); },
     listCourses: function (params) { return route(function () { return remote.listCourses(params); }, function () { return local.listCourses(params); }); },
@@ -651,13 +693,23 @@
     importCourses: function (list) { return route(function () { return remote.importCourses(list); }, function () { return local.importCourses(list); }); },
     resetDemo: function () { return route(remote.resetDemo, local.resetDemo); },
     clearCourses: function () { return route(remote.clearCourses, local.clearCourses); },
+    restoreBackup: function () { return route(remote.restoreBackup, local.restoreBackup); },
 
     /** 当前模式说明（UI 提示文案用，不改交互结构） */
     describeMode: function () {
+      if (EMBEDDED) {
+        return Promise.resolve({
+          remote: false,
+          modeLabel: '离线版 · 数据为导出时快照',
+          importTip: '这是离线导出版，只能查看导出时的课表。要更新课表，请回到电脑上的在线版重新导出。'
+        });
+      }
       return probeBackend().then(function (remoteMode) {
         return remoteMode
-          ? { remote: true, importTip: '将自动登录教务系统并读取课表；自动重试上限 2 次，连续失败 3 次教务系统会锁号 3 分钟，请确认账号密码正确。' }
-          : { remote: false, importTip: '未连接后端服务，当前为演示模式，读取到的是模拟数据。启动后端（python server/app.py）后将自动登录真实教务系统。' };
+          ? { remote: true, modeLabel: '在线 · 已连接本地服务',
+              importTip: '将自动登录教务系统并读取课表；自动重试上限 2 次，连续失败 3 次教务系统会锁号 3 分钟，请确认账号密码正确。' }
+          : { remote: false, modeLabel: '离线 · 显示缓存数据',
+              importTip: '未连接后端服务，当前显示的是上次同步的缓存数据（若从未同步则为演示数据）。启动后端后将自动登录真实教务系统。' };
       });
     },
 

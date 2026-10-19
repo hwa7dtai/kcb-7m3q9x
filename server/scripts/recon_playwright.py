@@ -209,6 +209,7 @@ def main() -> int:
 
         storage = Storage()
         service = ScheduleService(storage, ZhengfangAdapter(JW_BASE_URL))
+        service.backup_snapshot()  # 覆盖前留快照，可一键恢复
         removed = 0
         for c in storage.list_courses():
             if c.get("source") == "jwxt":

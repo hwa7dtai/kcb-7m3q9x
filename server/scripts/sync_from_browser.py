@@ -39,7 +39,8 @@ def main() -> int:
         return 1
     print("[同步] ✓ 读取到 {} 条排课（合并后 {} 个课表格位）".format(len(raw.get("kbList") or []), len(courses)))
 
-    # 移除上一次从教务系统导入的课程（保留手动添加的课程）
+    # 移除上一次从教务系统导入的课程（保留手动添加的课程；删除前自动快照）
+    service.backup_snapshot()
     removed = 0
     for c in storage.list_courses():
         if c.get("source") == "jwxt":

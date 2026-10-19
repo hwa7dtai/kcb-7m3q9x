@@ -11,12 +11,16 @@
 from __future__ import annotations
 
 import argparse
+import base64
+import json
 import logging
+import re
 import socket
 import sys
+from datetime import datetime
 from pathlib import Path
 
-from flask import Flask, jsonify, request, send_from_directory
+from flask import Flask, Response, jsonify, request, send_from_directory
 
 # 让 server/ 下的模块可直接导入
 sys.path.insert(0, str(Path(__file__).resolve().parent))
@@ -34,6 +38,50 @@ logging.basicConfig(
     format="%(asctime)s %(levelname)s %(name)s: %(message)s",
 )
 logger = logging.getLogger("kcb")
+
+
+def _json_for_script(obj) -> str:
+    """安全嵌入 <script> 的 JSON（转义 < 防止提前闭合）。"""
+    return json.dumps(obj, ensure_ascii=False).replace("<", "\\u003c")
+
+
+def build_offline_html(service) -> str:
+    """生成单文件离线课表：内联 CSS / JS / 背景图 / 课表快照。
+
+    打开方式：发给手机保存，用浏览器打开即可，无需联网、无需服务在运行。
+    """
+    index = (DEMO_DIR / "index.html").read_text(encoding="utf-8")
+    css = (DEMO_DIR / "css" / "style.css").read_text(encoding="utf-8")
+    store_js = (DEMO_DIR / "js" / "store.js").read_text(encoding="utf-8")
+    particles_js = (DEMO_DIR / "js" / "particles.js").read_text(encoding="utf-8")
+    app_js = (DEMO_DIR / "js" / "app.js").read_text(encoding="utf-8")
+    image_b64 = base64.b64encode((DEMO_DIR / "assets" / "night-blossom.jpg").read_bytes()).decode("ascii")
+
+    payload = {
+        "semester": service.get_semester(),
+        "courses": service.list_courses(),
+        "exportedAt": datetime.now().strftime("%Y-%m-%d %H:%M"),
+    }
+
+    html = index
+    html = html.replace("<title>课程表 · 个人版</title>", "<title>课程表 · 离线版</title>")
+    html = re.sub(r'<link rel="stylesheet" href="css/style\.css"[^>]*>',
+                  "<style>\n" + css + "\n</style>", html)
+    html = re.sub(r'<link rel="manifest"[^>]*>', "", html)
+    html = re.sub(r'<link rel="apple-touch-icon"[^>]*>', "", html)
+    html = re.sub(r'<link rel="icon"[^>]*>', "", html)
+    html = html.replace('src="assets/night-blossom.jpg"',
+                        'src="data:image/jpeg;base64,' + image_b64 + '"')
+    html = re.sub(r'<script src="js/store\.js"></script>',
+                  "<script>window.__KCB_EMBEDDED__ = " + _json_for_script(payload) + ";</script>\n<script>\n"
+                  + store_js + "\n</script>", html)
+    html = re.sub(r'<script src="js/particles\.js"></script>',
+                  "<script>\n" + particles_js + "\n</script>", html)
+    html = re.sub(r'<script src="js/app\.js"></script>',
+                  "<script>\n" + app_js + "\n</script>", html)
+    # 移除 Service Worker 注册（file:// 下无意义）
+    html = re.sub(r"<script>\s*/\* 注册 Service Worker[\s\S]*?</script>", "", html)
+    return html
 
 
 def create_app(storage: Storage = None, adapter: ZhengfangAdapter = None) -> Flask:
@@ -141,6 +189,22 @@ def create_app(storage: Storage = None, adapter: ZhengfangAdapter = None) -> Fla
     @app.post("/api/demo/clear")
     def api_demo_clear():
         return handle(service.clear_courses)
+
+    @app.post("/api/demo/restore")
+    def api_demo_restore():
+        return handle(service.restore_backup)
+
+    # ------------------------------------------------------------------
+    # 离线单文件导出：把当前课表内联成一份 HTML（手机保存后可离线查看）
+    # ------------------------------------------------------------------
+    @app.get("/api/export/offline")
+    def api_export_offline():
+        html = build_offline_html(service)
+        resp = Response(html, mimetype="text/html")
+        resp.headers["Content-Disposition"] = (
+            "attachment; filename=\"schedule-offline.html\"; "
+            "filename*=UTF-8''%E8%AF%BE%E7%A8%8B%E8%A1%A8%E7%A6%BB%E7%BA%BF%E7%89%88.html")
+        return resp
 
     # ------------------------------------------------------------------
     # 静态前端（demo/）

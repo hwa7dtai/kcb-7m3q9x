@@ -7,7 +7,9 @@
 """
 from __future__ import annotations
 
+import json
 import logging
+from datetime import datetime
 from typing import Dict, List, Optional
 
 from adapters.base import JwxtError, LoginError
@@ -64,12 +66,34 @@ class ScheduleService:
             self.reset_demo()
 
     def reset_demo(self) -> Dict:
-        """恢复演示种子数据。"""
+        """恢复演示种子数据（覆盖前自动备份现有课程，可一键恢复）。"""
+        self.backup_snapshot()
         self.storage.replace_all(SEED_COURSES)
         self.storage.set_meta("seeded", "1")
         self._id_seq = 100
         self._import_seq = 500
         return {"total": len(SEED_COURSES)}
+
+    # ------------------------------------------------------------------
+    # 数据安全：破坏性操作前自动快照，支持一键恢复
+    # ------------------------------------------------------------------
+    def backup_snapshot(self) -> None:
+        courses = self.storage.list_courses()
+        if not courses:
+            return
+        try:
+            self.storage.set_meta("backup_courses", json.dumps(courses, ensure_ascii=False))
+            self.storage.set_meta("backup_time", datetime.now().isoformat(timespec="seconds"))
+        except Exception as exc:  # 备份失败不阻断主流程，但留痕
+            logger.warning("快照保存失败：%s", exc)
+
+    def restore_backup(self) -> Dict:
+        raw = self.storage.get_meta("backup_courses")
+        if not raw:
+            raise ValidationError("没有可恢复的备份")
+        courses = json.loads(raw)
+        self.storage.replace_all(courses)
+        return {"total": len(courses)}
 
     # ------------------------------------------------------------------
     # 学期与周次（WeekEngine）
@@ -141,6 +165,7 @@ class ScheduleService:
         return {"id": course_id}
 
     def clear_courses(self) -> Dict:
+        self.backup_snapshot()
         self.storage.clear_courses()
         return {"total": 0}
 
@@ -208,18 +233,17 @@ class ScheduleService:
                 logger.info("抓取失败（第 %s/%s 次）：%s", attempt, MAX_LOGIN_ATTEMPTS, exc)
 
         if courses is None:
-            # 程序化登录被 WAF 拦截时，走浏览器会话兜底（需先用勘察脚本登录过一次）
-            browser_result = self._fetch_via_browser(term)
+            # 程序化登录失败（WAF/改版）→ 真实浏览器内自动登录并取数（网页一键导入的主通道）
+            browser_result = self._fetch_via_browser(term, student_id, password)
             if browser_result is not None:
                 return browser_result
             raise JwxtError(
-                "未能从教务系统读取课表：{}。若教务系统开启了访问防护，请运行 "
-                "「同步课表.bat / server/scripts/sync_from_browser.py」通过浏览器会话同步。".format(last_error)
+                "未能从教务系统读取课表：{}。请检查账号密码与网络；"
+                "若教务系统提示需要验证码，请先在电脑浏览器手动登录一次后再试。".format(last_error)
             )
         if not courses:
             raise JwxtError("教务系统返回了课表但未解析出任何课程（接口可能改版，"
                             "请运行 server/scripts/recon_playwright.py 重新勘察）")
-        from datetime import datetime
         self.storage.set_meta("last_fetch", datetime.now().isoformat(timespec="seconds"))
         # 登录成功后把凭据存入系统钥匙串，供一键刷新脚本使用（不含明文落盘）
         try:
@@ -234,29 +258,38 @@ class ScheduleService:
             "courses": courses,
         }
 
-    def _fetch_via_browser(self, term: Dict) -> Optional[Dict]:
-        """浏览器会话兜底取数；不可用时返回 None（不抛错，交由上层给最终提示）。"""
+    def _fetch_via_browser(self, term: Dict, student_id: str, password: str) -> Optional[Dict]:
+        """真实浏览器自动登录取数；失败返回 None（最终错误由调用方给出）。"""
         from core import browser_fetch
         kb_path = getattr(self.adapter, "kb_path", None)
+        paths = [kb_path] if kb_path else JW_KB_CANDIDATES
         try:
-            raw = browser_fetch.fetch_raw_via_profile(
-                JW_BASE_URL, [kb_path] if kb_path else JW_KB_CANDIDATES, term)
-        except Exception as exc:  # 浏览器通道异常不掩盖原始错误
-            logger.warning("浏览器通道失败：%s", exc)
+            raw, error = browser_fetch.login_and_fetch(
+                JW_BASE_URL, student_id, password, paths, term)
+        except Exception as exc:
+            logger.warning("浏览器自动登录异常：%s", exc)
             return None
         if raw is None:
+            if error:
+                logger.warning("浏览器自动登录失败：%s", error)
+                # 明确的账号密码错误直接上抛，不再重试
+                if any(k in error for k in ("密码", "锁定", "验证码")):
+                    raise JwxtError(error) from None
             return None
         courses = self.adapter.parse(raw)
         if not courses:
             return None
-        from datetime import datetime
         self.storage.set_meta("last_fetch", datetime.now().isoformat(timespec="seconds"))
+        try:
+            credentials.save_credentials(student_id, password)
+        except credentials.CredentialError:
+            pass
         sem = self.storage.get_semester()
-        logger.info("通过浏览器会话读取课表 %s 门", len(courses))
+        logger.info("通过浏览器自动登录读取课表 %s 门", len(courses))
         return {
-            "studentId": "",
+            "studentId": student_id,
             "semesterName": sem["name"],
-            "source": "正方教务系统（浏览器会话）",
+            "source": "正方教务系统（浏览器自动登录）",
             "courses": courses,
         }
 

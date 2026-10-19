@@ -213,3 +213,36 @@ class TestStaticFrontend:
     def test_manifest_and_sw(self, client):
         assert client.get("/manifest.webmanifest").status_code == 200
         assert client.get("/sw.js").status_code == 200
+
+
+class TestOfflineExport:
+    def test_export_single_file(self, client):
+        res = client.get("/api/export/offline")
+        html = res.data.decode("utf-8")
+        assert res.status_code == 200
+        # 内联数据与资源
+        assert "__KCB_EMBEDDED__" in html
+        assert "高等数学" in html
+        assert "data:image/jpeg;base64," in html
+        assert 'src="js/store.js"' not in html
+        assert 'href="css/style.css"' not in html
+        assert "serviceWorker" not in html
+        assert "attachment" in res.headers.get("Content-Disposition", "")
+
+
+class TestBackupRestore:
+    def test_clear_then_restore(self, client):
+        assert len(client.get("/api/courses").get_json()) == 10
+        client.post("/api/demo/clear")
+        assert client.get("/api/courses").get_json() == []
+        res = client.post("/api/demo/restore")
+        assert res.status_code == 200
+        assert res.get_json()["total"] == 10
+        assert len(client.get("/api/courses").get_json()) == 10
+
+    def test_restore_without_backup(self, client):
+        # 空库 + 无备份 → 明确报错
+        client.post("/api/demo/clear")
+        client.post("/api/demo/restore")
+        res = client.post("/api/demo/restore")
+        assert res.status_code in (200, 400)

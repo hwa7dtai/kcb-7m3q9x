@@ -712,6 +712,25 @@
       });
     });
 
+    /* 恢复清空/重置前的自动备份 */
+    $('#btnRestore').addEventListener('click', function () {
+      confirmDialog({
+        title: '恢复上次数据',
+        body: '<p style="margin:0">将把课表恢复到最近一次「清空 / 重置 / 重新导入」之前的状态。</p>',
+        okText: '确认恢复',
+        onOk: function () {
+          Store.restoreBackup().then(function (res) {
+            closeModal('modalConfirm');
+            toast('已恢复 ' + (res.total || 0) + ' 门课程', 'success');
+            return refreshAll();
+          }).catch(function (err) {
+            closeModal('modalConfirm');
+            toast(err.message || '没有可恢复的备份', 'error');
+          });
+        }
+      });
+    });
+
     $('#btnClear').addEventListener('click', function () {
       confirmDialog({
         title: '清空课程',
@@ -841,6 +860,22 @@
     bindGlassSheen();
     window.addEventListener('resize', moveNavIndicator);
     if (window.CourseParticles) { window.CourseParticles.init(); }
+
+    /* 模式标识：在线 / 离线缓存 / 离线单文件；离线版隐藏导出与导入入口 */
+    if (typeof Store.describeMode === 'function') {
+      Store.describeMode().then(function (mode) {
+        var tag = document.getElementById('modeTag');
+        if (tag) { tag.textContent = mode.modeLabel || (mode.remote ? '在线' : '离线'); }
+        if (!mode.remote) {
+          var exp = document.querySelector('[data-offline-export]');
+          if (exp) { exp.style.display = 'none'; }
+        }
+        if (Store.isEmbedded) {
+          var imp = document.getElementById('btnImport');
+          if (imp) { imp.style.display = 'none'; }
+        }
+      });
+    }
 
     loadSemester().then(refreshAll).catch(function (err) {
       toast(err.message || '初始化失败', 'error');
