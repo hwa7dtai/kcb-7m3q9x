@@ -19,6 +19,9 @@
   var API_BASE = 'api/';      // 相对路径，与页面同源
   /* 离线单文件导出：服务端把课表快照内联进 HTML，此标记存在即强制本地模式 */
   var EMBEDDED = global.__KCB_EMBEDDED__ || null;
+  /* 静态托管站（GitHub Pages 等）：没有后端，首次打开不应显示演示数据 */
+  var CLOUD_STATIC = /(^|\.)github\.io$|(^|\.)pages\.dev$/.test(
+    (global.location && global.location.hostname) || '');
 
   var SEMESTER = {
     id: '2026-2027-1',
@@ -444,9 +447,14 @@
     var cached = readCache();
     if (cached && cached.courses.length) {
       db = { semester: cached.semester || SEMESTER, courses: cached.courses };
-    } else {
-      db = { semester: deepClone(SEMESTER), courses: deepClone(SEED_COURSES) };
+      return;
     }
+    if (CLOUD_STATIC) {
+      /* 云端版首次访问：空课表，引导用户点「同步最新」，而不是给假数据 */
+      db = { semester: deepClone(SEMESTER), courses: [] };
+      return;
+    }
+    db = { semester: deepClone(SEMESTER), courses: deepClone(SEED_COURSES) };
   }
 
   /** 本地模式同样持久化到 localStorage，页面刷新不丢改动 */

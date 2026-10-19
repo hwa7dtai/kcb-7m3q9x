@@ -9,6 +9,9 @@
 
   var COLORS = ['blue', 'teal', 'amber', 'purple', 'rose', 'green', 'cyan'];
 
+  /* 云端静态站（GitHub Pages 等）：没有后端，数据靠「同步最新」拉取 */
+  var cloudStatic = /(^|\.)github\.io$|(^|\.)pages\.dev$/.test(location.hostname);
+
   var state = {
     view: 'schedule',
     semester: null,
@@ -276,11 +279,13 @@
         ? emptyState(emptyIcon, '没有找到匹配的课程',
           '没有与「' + state.keyword + '」相关的课程，试试更换关键词。',
           '<button class="btn" data-action="clear-search">清除搜索</button>')
-        : emptyState(emptyIcon, '本学期还没有课程',
-          '手动新增第一门课程，或从教务系统一键导入。',
-          '<div style="display:flex;gap:8px;justify-content:center;flex-wrap:wrap">' +
-          '<button class="btn btn-primary" data-action="add-course">新增课程</button>' +
-          '<button class="btn" data-action="import-jwxt">从教务系统导入</button></div>');
+        : emptyState(emptyIcon, cloudStatic ? '还没有同步课表' : '本学期还没有课程',
+          cloudStatic ? '点下面按钮从云端拉取最新课表（只需联网一次）。' : '手动新增第一门课程，或从教务系统一键导入。',
+          cloudStatic
+            ? '<button class="btn btn-primary" data-action="sync-cloud">同步最新课表</button>'
+            : '<div style="display:flex;gap:8px;justify-content:center;flex-wrap:wrap">' +
+              '<button class="btn btn-primary" data-action="add-course">新增课程</button>' +
+              '<button class="btn" data-action="import-jwxt">从教务系统导入</button></div>');
       box.innerHTML = html;
       return;
     }
@@ -812,6 +817,11 @@
         if (action === 'delete-course') { askDelete(id); return; }
         if (action === 'add-course') { openForm(null); return; }
         if (action === 'import-jwxt') { openImport(); return; }
+        if (action === 'sync-cloud') {
+          var pullBtn = $('#btnPull');
+          if (pullBtn) { pullBtn.click(); }
+          return;
+        }
         if (action === 'clear-search') {
           $('#searchInput').value = '';
           state.keyword = '';
@@ -914,8 +924,6 @@
     if (window.CourseParticles) { window.CourseParticles.init(); }
 
     /* 模式标识：在线 / 云端静态 / 离线缓存 / 离线单文件 */
-    var cloudStatic = /(^|\.)github\.io$/.test(location.hostname) ||
-                      /(^|\.)pages\.dev$/.test(location.hostname);
     if (typeof Store.describeMode === 'function') {
       Store.describeMode().then(function (mode) {
         var tag = document.getElementById('modeTag');
